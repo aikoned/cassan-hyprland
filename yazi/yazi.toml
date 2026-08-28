@@ -1,0 +1,24 @@
+#:schema https://yazi-rs.github.io/schemas/yazi.json
+
+[mgr]
+ratio = [1, 4, 3]
+sort_by = "natural"
+sort_sensitive = false
+sort_reverse = false
+sort_dir_first = true
+sort_translit = false
+sort_fallback = "natural"
+linemode = "size"
+show_hidden = false
+show_symlink = true
+scrolloff = 5
+mouse_events = ["click", "scroll"]
+
+[preview]
+wrap = "no"
+tab_size = 2
+max_width = 1200
+max_height = 1200
+image_delay = 30
+image_filter = "triangle"
+image_quality = 75

@@ -14,6 +14,7 @@ xdg-desktop-portal-hyprland
 
 # Terminal surfaces
 yazi
+file
 fastfetch
 cava
 btop

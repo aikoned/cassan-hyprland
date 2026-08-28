@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/2.67.1/doc/json_schema.json",
+  "logo": {
+    "type": "builtin",
+    "source": "arch",
+    "color": {
+      "1": "#A173C9",
+      "2": "#F2D7DF"
+    },
+    "padding": {
+      "top": 1,
+      "left": 1,
+      "right": 3
+    },
+    "printRemaining": true,
+    "position": "left"
+  },
+  "display": {
+    "separator": "  ",
+    "color": {
+      "keys": "#A173C9",
+      "title": "#A173C9",
+      "output": "#F2D7DF",
+      "separator": "#76548F"
+    }
+  },
+  "modules": [
+    "title",
+    "separator",
+    {
+      "type": "os",
+      "key": " OS"
+    },
+    {
+      "type": "host",
+      "key": "󰌢 Host"
+    },
+    {
+      "type": "kernel",
+      "key": "󰌽 Kernel"
+    },
+    {
+      "type": "packages",
+      "key": "󰏖 Packages"
+    },
+    {
+      "type": "shell",
+      "key": " Shell"
+    },
+    {
+      "type": "wm",
+      "key": " Desktop"
+    },
+    {
+      "type": "terminal",
+      "key": " Terminal"
+    },
+    {
+      "type": "terminalfont",
+      "key": " Font"
+    },
+    {
+      "type": "cpu",
+      "key": " CPU"
+    },
+    {
+      "type": "gpu",
+      "key": "󰍛 GPU"
+    },
+    {
+      "type": "memory",
+      "key": "󰘚 Memory"
+    },
+    {
+      "type": "battery",
+      "key": "󰁹 Battery"
+    },
+    {
+      "type": "uptime",
+      "key": "󰅐 Uptime"
+    },
+    {
+      "type": "media",
+      "key": " Playing"
+    },
+    "break",
+    "colors"
+  ]
+}

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import configparser
 import json
 import re
 import shutil
@@ -11,6 +12,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from validate_toml import load as load_toml
+
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 WAYBAR_CONFIG = REPO_DIR / "waybar" / "config.jsonc"
@@ -18,6 +21,11 @@ HYPR_ENTRYPOINT = REPO_DIR / "hypr" / "hyprland.lua"
 KITTY_CONFIG = REPO_DIR / "kitty" / "kitty.conf"
 WOFI_CONFIG = REPO_DIR / "wofi" / "config"
 SWAYNC_CONFIG = REPO_DIR / "swaync" / "config.json"
+YAZI_CONFIG = REPO_DIR / "yazi" / "yazi.toml"
+YAZI_THEME = REPO_DIR / "yazi" / "theme.toml"
+FASTFETCH_CONFIG = REPO_DIR / "fastfetch" / "config.jsonc"
+CAVA_CONFIG = REPO_DIR / "cava" / "config"
+CAVA_THEME = REPO_DIR / "cava" / "themes" / "nighthowler"
 
 EXPECTED_WAYBAR_CLUSTERS = {
     "modules-left": ["custom/cassan", "hyprland/workspaces", "mpris"],
@@ -150,6 +158,101 @@ DEPRECATED_SWAYNC_KEYS = {
     "image-radius",
     "icon-size",
     "right-click-command",
+}
+
+EXPECTED_YAZI_CONFIG = {
+    "mgr": {
+        "ratio": [1, 4, 3],
+        "sort_by": "natural",
+        "sort_sensitive": False,
+        "sort_reverse": False,
+        "sort_dir_first": True,
+        "sort_translit": False,
+        "sort_fallback": "natural",
+        "linemode": "size",
+        "show_hidden": False,
+        "show_symlink": True,
+        "scrolloff": 5,
+        "mouse_events": ["click", "scroll"],
+    },
+    "preview": {
+        "wrap": "no",
+        "tab_size": 2,
+        "max_width": 1200,
+        "max_height": 1200,
+        "image_delay": 30,
+        "image_filter": "triangle",
+        "image_quality": 75,
+    },
+}
+
+EXPECTED_YAZI_THEME_SECTIONS = [
+    "app",
+    "mgr",
+    "tabs",
+    "mode",
+    "indicator",
+    "status",
+    "which",
+    "confirm",
+    "spot",
+    "notify",
+    "pick",
+    "input",
+    "cmp",
+    "tasks",
+    "help",
+]
+
+EXPECTED_FASTFETCH_MODULES = [
+    "title",
+    "separator",
+    "os",
+    "host",
+    "kernel",
+    "packages",
+    "shell",
+    "wm",
+    "terminal",
+    "terminalfont",
+    "cpu",
+    "gpu",
+    "memory",
+    "battery",
+    "uptime",
+    "media",
+    "break",
+    "colors",
+]
+
+EXPECTED_CAVA_CONFIG = {
+    "general": {
+        "framerate": "30",
+        "autosens": "1",
+        "sensitivity": "100",
+        "scaling": "linear",
+        "bars": "0",
+        "bar_width": "2",
+        "bar_spacing": "1",
+        "center_align": "1",
+        "max_height": "92",
+        "lower_cutoff_freq": "50",
+        "higher_cutoff_freq": "10000",
+        "sleep_timer": "3",
+    },
+    "input": {"method": "pipewire", "source": "auto"},
+    "output": {
+        "method": "noncurses",
+        "orientation": "bottom",
+        "channels": "stereo",
+        "mono_option": "average",
+        "reverse": "0",
+        "xaxis": "none",
+        "synchronized_sync": "0",
+        "show_idle_bar_heads": "0",
+    },
+    "color": {"theme": "'nighthowler'"},
+    "smoothing": {"monstercat": "0", "waves": "0", "noise_reduction": "77"},
 }
 
 REQUIRE_RE = re.compile(
@@ -474,6 +577,120 @@ def validate_swaync() -> None:
         raise ValidationError("SwayNC brightness setter must use brightnessctl")
 
 
+def validate_yazi() -> None:
+    source = read_text(YAZI_CONFIG)
+    reject_machine_paths(source, "yazi/yazi.toml")
+    if not source.startswith("#:schema https://yazi-rs.github.io/schemas/yazi.json\n"):
+        raise ValidationError("yazi/yazi.toml must declare Yazi's current schema first")
+
+    try:
+        config = load_toml(YAZI_CONFIG)
+    except (OSError, ValueError) as exc:
+        raise ValidationError(f"yazi/yazi.toml is invalid TOML: {exc}") from exc
+    if config != EXPECTED_YAZI_CONFIG:
+        raise ValidationError("yazi/yazi.toml violates its portable three-pane contract")
+
+    theme = read_text(YAZI_THEME)
+    reject_machine_paths(theme, "yazi/theme.toml")
+    if not theme.startswith("#:schema https://yazi-rs.github.io/schemas/theme.json\n"):
+        raise ValidationError("yazi/theme.toml must declare Yazi's current theme schema first")
+    sections = re.findall(r"^\[([a-z]+)\]$", theme, flags=re.MULTILINE)
+    if sections != EXPECTED_YAZI_THEME_SECTIONS:
+        raise ValidationError(
+            "yazi/theme.toml must style only the maintained Nighthowler UI sections; "
+            f"found {sections!r}"
+        )
+    if "[filetype]" in theme or "[completion]" in theme:
+        raise ValidationError(
+            "yazi/theme.toml must retain Yazi's maintained file icons and current cmp section"
+        )
+
+
+def fastfetch_module_type(module: Any) -> str:
+    if isinstance(module, str):
+        return module
+    if not isinstance(module, dict) or not isinstance(module.get("type"), str):
+        raise ValidationError("each Fastfetch module must be a string or typed object")
+    if not isinstance(module.get("key"), str) or not module["key"].strip():
+        raise ValidationError(f"Fastfetch module {module['type']!r} must have a visible key")
+    return module["type"]
+
+
+def validate_fastfetch() -> None:
+    config = load_strict_json(FASTFETCH_CONFIG)
+    if not isinstance(config, dict):
+        raise ValidationError("fastfetch/config.jsonc must contain one JSON object")
+
+    source = read_text(FASTFETCH_CONFIG)
+    reject_machine_paths(source, "fastfetch/config.jsonc")
+    if "aikon" in source.lower():
+        raise ValidationError("Fastfetch must detect the user's hostname instead of naming aikon")
+    if set(config) != {"$schema", "logo", "display", "modules"}:
+        raise ValidationError("Fastfetch must contain exactly schema, logo, display, and modules")
+    if config["$schema"] != (
+        "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/2.67.1/"
+        "doc/json_schema.json"
+    ):
+        raise ValidationError("Fastfetch must pin the Arch stable 2.67.1 schema")
+
+    logo = config.get("logo")
+    expected_logo = {
+        "type": "builtin",
+        "source": "arch",
+        "color": {"1": "#A173C9", "2": "#F2D7DF"},
+        "padding": {"top": 1, "left": 1, "right": 3},
+        "printRemaining": True,
+        "position": "left",
+    }
+    if logo != expected_logo:
+        raise ValidationError("Fastfetch logo must use the themed built-in Arch Linux ASCII art")
+
+    modules = config.get("modules")
+    if not isinstance(modules, list):
+        raise ValidationError("Fastfetch modules must be an ordered list")
+    module_types = [fastfetch_module_type(module) for module in modules]
+    if module_types != EXPECTED_FASTFETCH_MODULES:
+        raise ValidationError(
+            f"Fastfetch modules must be {EXPECTED_FASTFETCH_MODULES!r}; found {module_types!r}"
+        )
+    if any(module_type in {"command", "custom"} for module_type in module_types):
+        raise ValidationError("Fastfetch must not execute custom commands")
+
+
+def load_ini(path: Path) -> dict[str, dict[str, str]]:
+    parser = configparser.ConfigParser(interpolation=None, strict=True)
+    parser.optionxform = str
+    try:
+        parser.read_string(read_text(path))
+    except configparser.Error as exc:
+        raise ValidationError(f"{path.relative_to(REPO_DIR)} is invalid INI: {exc}") from exc
+    return {section: dict(parser.items(section)) for section in parser.sections()}
+
+
+def validate_cava() -> None:
+    source = read_text(CAVA_CONFIG)
+    reject_machine_paths(source, "cava/config")
+    config = load_ini(CAVA_CONFIG)
+    if config != EXPECTED_CAVA_CONFIG:
+        raise ValidationError("cava/config violates its portable low-overhead PipeWire contract")
+
+    theme_source = read_text(CAVA_THEME)
+    reject_machine_paths(theme_source, "cava/themes/nighthowler")
+    theme = load_ini(CAVA_THEME)
+    if set(theme) != {"color"}:
+        raise ValidationError("Cava's Nighthowler theme must contain only its color section")
+    color = theme["color"]
+    if color.get("gradient") != "1" or "gradient_count" in color:
+        raise ValidationError("Cava must use its documented implicit gradient color count")
+    gradient_keys = [f"gradient_color_{index}" for index in range(1, 7)]
+    if set(color) != {"background", "foreground", "gradient", *gradient_keys}:
+        raise ValidationError("Cava's Nighthowler theme must define exactly six gradient stops")
+    for key in ("background", "foreground", *gradient_keys):
+        value = color[key].strip("'\"")
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", value):
+            raise ValidationError(f"Cava theme {key} is not a six-digit hex color")
+
+
 def validate_style_import(path: Path) -> None:
     source = read_text(path)
     reject_machine_paths(source, str(path.relative_to(REPO_DIR)))
@@ -551,6 +768,9 @@ def main() -> int:
         validate_kitty()
         validate_wofi()
         validate_swaync()
+        validate_yazi()
+        validate_fastfetch()
+        validate_cava()
         validate_style_import(REPO_DIR / "wofi" / "style.css")
         validate_style_import(REPO_DIR / "swaync" / "style.css")
         compile_lua(lua_files)

@@ -8,6 +8,9 @@ repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 required_paths=(
   ".zshrc"
   "assets/nighthowler/palette.toml"
+  "cava/config"
+  "cava/themes/nighthowler"
+  "fastfetch/config.jsonc"
   "hypr/animation.lua"
   "hypr/bind.lua"
   "hypr/environment.lua"
@@ -34,6 +37,8 @@ required_paths=(
   "wofi/config"
   "wofi/style.css"
   "wofi/theme.css"
+  "yazi/theme.toml"
+  "yazi/yazi.toml"
 )
 
 for path in "${required_paths[@]}"; do
