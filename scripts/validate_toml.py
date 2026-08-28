@@ -79,6 +79,11 @@ def load(path: Path) -> dict:
 
 def validate_palette() -> None:
     palette = load(PALETTE_PATH)
+    if palette.get("schema") != 1:
+        raise ValueError("unsupported palette schema")
+    if not isinstance(palette.get("name"), str) or not palette["name"].strip():
+        raise ValueError("theme name must be a non-empty string")
+
     slug = palette.get("slug")
     colors = palette.get("colors", {})
     roles = palette.get("roles", {})
@@ -111,6 +116,9 @@ def validate_palette() -> None:
 
     if not typography.get("desktop_font") or not typography.get("terminal_font"):
         raise ValueError("palette must define desktop and terminal fonts")
+    for key in ("bar_size_px", "launcher_size_px", "terminal_size_pt"):
+        if not isinstance(typography.get(key), int) or typography[key] <= 0:
+            raise ValueError(f"typography.{key} must be a positive integer")
 
     positive_geometry = {
         "border_px",
@@ -132,14 +140,26 @@ def validate_palette() -> None:
         raise ValueError("rounding_px must be a non-negative integer")
     if geometry.get("blur_enabled") is not False:
         raise ValueError("Nighthowler's base visual contract keeps blur disabled")
+    if not isinstance(geometry.get("shadow_enabled"), bool):
+        raise ValueError("shadow_enabled must be a boolean")
+    shadow_opacity = geometry.get("shadow_opacity")
+    if (
+        not isinstance(shadow_opacity, (int, float))
+        or isinstance(shadow_opacity, bool)
+        or not 0 <= shadow_opacity <= 1
+    ):
+        raise ValueError("shadow_opacity must be between 0 and 1")
+    opacity = geometry.get("opacity")
+    if (
+        not isinstance(opacity, (int, float))
+        or isinstance(opacity, bool)
+        or not 0 < opacity <= 1
+    ):
+        raise ValueError("opacity must be greater than 0 and at most 1")
 
-    durations = {
-        name: value
-        for name, value in animation.items()
-        if name.startswith("duration_") and (not isinstance(value, int) or value <= 0)
-    }
-    if durations:
-        raise ValueError(f"invalid animation durations: {durations}")
+    for key in ("duration_fast_ms", "duration_normal_ms", "duration_slow_ms"):
+        if not isinstance(animation.get(key), int) or animation[key] <= 0:
+            raise ValueError(f"animation.{key} must be a positive integer")
     if animation.get("overshoot") is not False:
         raise ValueError("Nighthowler animations must not overshoot")
 

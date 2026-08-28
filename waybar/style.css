@@ -1,0 +1,184 @@
+@import url("theme.css");
+
+* {
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  font-family: "Iosevka Nerd Font";
+  font-size: 15px;
+  font-weight: 500;
+}
+
+window#waybar {
+  background: transparent;
+  color: @cassan-text;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  min-height: 30px;
+  background: @cassan-panel;
+  border: 2px solid @cassan-focus-inactive;
+  border-radius: 4px;
+}
+
+tooltip {
+  background: @cassan-panel;
+  color: @cassan-text;
+  border: 2px solid @cassan-focus-inactive;
+  border-radius: 4px;
+}
+
+tooltip label {
+  padding: 6px 8px;
+  color: @cassan-text;
+}
+
+#custom-cassan {
+  padding: 0 10px;
+  color: @cassan-focus;
+  font-weight: 700;
+}
+
+#custom-cassan:hover,
+#mpris:hover,
+#clock:hover,
+#network:hover,
+#bluetooth:hover,
+#pulseaudio:hover,
+#backlight:hover,
+#battery:hover,
+#custom-notification:hover {
+  background: @cassan-panel-alternate;
+  color: @cassan-text;
+}
+
+#workspaces {
+  padding: 0 3px;
+  border-left: 1px solid @cassan-panel-alternate;
+  border-right: 1px solid @cassan-panel-alternate;
+}
+
+#workspaces button {
+  min-width: 12px;
+  padding: 0 6px;
+  background: transparent;
+  color: @cassan-text-muted;
+  border-radius: 2px;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+#workspaces button:hover {
+  background: @cassan-panel-alternate;
+  color: @cassan-text-secondary;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+#workspaces button.active {
+  background: @cassan-focus;
+  color: @cassan-panel;
+}
+
+#workspaces button.visible:not(.active) {
+  color: @cassan-text-secondary;
+}
+
+#workspaces button.urgent {
+  background: @cassan-urgent;
+  color: @cassan-panel;
+}
+
+#mpris {
+  padding: 0 10px;
+  color: @cassan-text-secondary;
+}
+
+#mpris.paused,
+#mpris.stopped {
+  color: @cassan-text-muted;
+}
+
+#window {
+  padding: 0 14px;
+  color: @cassan-text-secondary;
+}
+
+#cpu,
+#memory,
+#clock,
+#network,
+#bluetooth,
+#pulseaudio,
+#backlight,
+#battery,
+#tray,
+#custom-notification {
+  padding: 0 7px;
+}
+
+#memory,
+#clock,
+#network,
+#bluetooth,
+#pulseaudio,
+#backlight,
+#battery,
+#tray,
+#custom-notification {
+  border-left: 1px solid @cassan-panel-alternate;
+}
+
+#cpu {
+  color: @cassan-warm-accent;
+}
+
+#memory,
+#clock {
+  color: @cassan-text-secondary;
+}
+
+#network.disconnected,
+#network.disabled,
+#bluetooth.disabled,
+#bluetooth.off,
+#pulseaudio.muted {
+  color: @cassan-text-muted;
+}
+
+#battery.charging,
+#battery.plugged,
+#battery.full {
+  color: @cassan-focus;
+}
+
+#battery.warning:not(.charging) {
+  color: @cassan-warm-accent;
+}
+
+#battery.critical:not(.charging) {
+  color: @cassan-urgent;
+}
+
+#custom-notification {
+  padding-right: 10px;
+  color: @cassan-text-secondary;
+}
+
+#custom-notification.notification,
+#custom-notification.dnd-notification,
+#custom-notification.inhibited-notification,
+#custom-notification.dnd-inhibited-notification {
+  color: @cassan-urgent;
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+  color: @cassan-urgent;
+}

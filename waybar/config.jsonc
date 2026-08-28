@@ -1,0 +1,202 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 34,
+  "margin-top": 10,
+  "margin-right": 10,
+  "margin-left": 10,
+  "spacing": 0,
+  "fixed-center": true,
+  "exclusive": true,
+  "reload_style_on_change": true,
+
+  "modules-left": [
+    "custom/cassan",
+    "hyprland/workspaces",
+    "mpris"
+  ],
+  "modules-center": [
+    "hyprland/window"
+  ],
+  "modules-right": [
+    "cpu",
+    "memory",
+    "clock",
+    "network",
+    "bluetooth",
+    "pulseaudio",
+    "backlight",
+    "battery",
+    "tray",
+    "custom/notification"
+  ],
+
+  "custom/cassan": {
+    "exec": "printf '\\n'",
+    "interval": "once",
+    "format": "{}",
+    "tooltip-format": "Cassan Nighthowler\nSuper + Space — launcher",
+    "on-click": "wofi --show drun --allow-images"
+  },
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "sort-by": "number",
+    "persistent-workspaces": {
+      "*": 6
+    },
+    "show-special": false,
+    "active-only": false,
+    "all-outputs": false,
+    "disable-scroll": true,
+    "tooltip": false
+  },
+
+  "mpris": {
+    "format": "{status_icon} {dynamic}",
+    "format-paused": "{status_icon} {dynamic}",
+    "format-stopped": "",
+    "status-icons": {
+      "playing": "",
+      "paused": "",
+      "stopped": ""
+    },
+    "dynamic-order": [
+      "title",
+      "artist"
+    ],
+    "title-len": 16,
+    "artist-len": 12,
+    "dynamic-len": 24,
+    "tooltip-format": "{player} · {status}\n{title}\n{artist}"
+  },
+
+  "hyprland/window": {
+    "format": "[ {title} ]",
+    "max-length": 36,
+    "separate-outputs": true
+  },
+
+  "cpu": {
+    "interval": 2,
+    "format": "CPU:{usage}%",
+    "tooltip": false
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "RAM:{percentage}%",
+    "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB"
+  },
+
+  "clock": {
+    "interval": 60,
+    "format": " {:%H:%M}",
+    "format-alt": " {:%a %d %b}",
+    "tooltip-format": "{:%A, %B %d, %Y}"
+  },
+
+  "network": {
+    "interval": 2,
+    "format-wifi": " {signalStrength}%",
+    "format-ethernet": "󰌀",
+    "format-linked": "󰌀",
+    "format-disconnected": "󰝪",
+    "format-disabled": "󰝪",
+    "tooltip-format-wifi": "{essid}\n{ipaddr}/{cidr}",
+    "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
+    "tooltip-format-disconnected": "Network disconnected"
+  },
+
+  "bluetooth": {
+    "format": "",
+    "format-disabled": "󰊲",
+    "format-off": "󰊲",
+    "format-on": "",
+    "format-connected": " {num_connections}",
+    "format-no-controller": "",
+    "tooltip-format": "{controller_alias}",
+    "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}"
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "󰙟",
+    "format-icons": {
+      "headphone": "",
+      "headset": "󰌄",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": [
+        "",
+        "",
+        ""
+      ]
+    },
+    "scroll-step": 5,
+    "tooltip-format": "{desc}\nVolume: {volume}%"
+  },
+
+  "backlight": {
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "󰃞",
+      "󰃝"
+    ],
+    "scroll-step": 5,
+    "tooltip": false
+  },
+
+  "battery": {
+    "interval": 30,
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": "󰂄 {capacity}%",
+    "format-full": "󰁹 {capacity}%",
+    "format-icons": [
+      "󰁺",
+      "󰁻",
+      "󰁼",
+      "󰁽",
+      "󰁾",
+      "󰁿",
+      "󰂀",
+      "󰂁",
+      "󰂂",
+      "󰁹"
+    ],
+    "tooltip-format": "{time}\n{capacity}%"
+  },
+
+  "tray": {
+    "icon-size": 15,
+    "spacing": 8
+  },
+
+  "custom/notification": {
+    "return-type": "json",
+    "exec": "swaync-client -swb",
+    "restart-interval": 1,
+    "format": "{icon}",
+    "format-icons": {
+      "notification": " ",
+      "none": "",
+      "dnd-notification": " ",
+      "dnd-none": "",
+      "inhibited-notification": " ",
+      "inhibited-none": "",
+      "dnd-inhibited-notification": " ",
+      "dnd-inhibited-none": ""
+    },
+    "tooltip": false,
+    "escape": true,
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw"
+  }
+}
