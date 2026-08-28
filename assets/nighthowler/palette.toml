@@ -40,7 +40,11 @@ border_px = 2
 rounding_px = 4
 gap_inner_px = 5
 gap_outer_px = 10
-bar_height_px = 40
+bar_height_px = 34
+bar_margin_px = 10
+panel_padding_px = 14
+shadow_blur_px = 14
+shadow_opacity = 0.28
 shadow_enabled = true
 blur_enabled = false
 opacity = 1.0
@@ -53,7 +57,17 @@ duration_slow_ms = 240
 overshoot = false
 
 [wallpaper]
-asset_policy = "user-supplied"
+asset_policy = "bundled-private"
+filename = "wallpaper.jpg"
+redistributable = false
+fit = "cover"
+position = "center"
 focal_subject = "center"
 protect_face = true
 protect_eye = true
+
+[layout]
+desktop_aspect_ratio = "16:9"
+default_composition = "showcase"
+bar_islands = 3
+subject_safe_area = "center"

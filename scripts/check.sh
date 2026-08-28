@@ -28,4 +28,4 @@ fi
 git -C "$repo_dir" diff --check
 git -C "$repo_dir" diff --cached --check
 
-echo "Cassan foundation checks passed."
+echo "Cassan repository checks passed."

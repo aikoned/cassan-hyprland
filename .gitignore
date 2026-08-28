@@ -29,8 +29,9 @@ logs/
 wallpapers/private/
 assets/*/private/
 
-# Generated preview and build output
-preview/dist/
+# Workspace-only visual preview and generated build output
+/preview/
+/scripts/preview.sh
 generated/
 build/
 __pycache__/
