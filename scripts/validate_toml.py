@@ -17,7 +17,7 @@ except ModuleNotFoundError:
 
 REPO = Path(__file__).resolve().parents[1]
 PALETTE_PATH = REPO / "assets" / "nighthowler" / "palette.toml"
-HOST_PATH = REPO / "hosts" / "aikon" / "host.toml"
+HOSTS_PATH = REPO / "hosts"
 HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{8}$|^#[0-9A-Fa-f]{6}$")
 
 
@@ -80,18 +80,31 @@ def validate_palette() -> None:
         raise ValueError(f"palette roles reference unknown colors: {unknown_roles}")
 
 
-def validate_host() -> None:
-    host = load(HOST_PATH)
-    if host.get("hostname") != "aikon":
-        raise ValueError("host profile must target aikon")
+def validate_host(path: Path) -> None:
+    host = load(path)
+    expected_hostname = path.parent.name
+    hostname = host.get("hostname")
+
+    if hostname != expected_hostname:
+        raise ValueError(
+            f"{path}: hostname must match its profile directory ({expected_hostname})"
+        )
     if host.get("hardware_status") not in {"pending", "confirmed"}:
-        raise ValueError("hardware_status must be pending or confirmed")
+        raise ValueError(f"{path}: hardware_status must be pending or confirmed")
+
+
+def validate_hosts() -> None:
+    if not HOSTS_PATH.is_dir():
+        return
+
+    for path in sorted(HOSTS_PATH.glob("*/host.toml")):
+        validate_host(path)
 
 
 def main() -> int:
     try:
         validate_palette()
-        validate_host()
+        validate_hosts()
     except (OSError, ValueError) as error:
         print(f"validation failed: {error}", file=sys.stderr)
         return 1

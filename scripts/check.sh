@@ -8,7 +8,6 @@ repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 required_paths=(
   ".zshrc"
   "assets/nighthowler/palette.toml"
-  "hosts/aikon/host.toml"
   "packages/official.txt"
   "scripts/validate_toml.py"
 )
