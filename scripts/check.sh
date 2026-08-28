@@ -19,13 +19,21 @@ required_paths=(
   "hypr/rules.lua"
   "hypr/startup.lua"
   "hypr/theme.lua"
+  "kitty/kitty.conf"
+  "kitty/theme.conf"
   "packages/official.txt"
   "scripts/render_theme.py"
   "scripts/validate_config.py"
   "scripts/validate_toml.py"
+  "swaync/config.json"
+  "swaync/style.css"
+  "swaync/theme.css"
   "waybar/config.jsonc"
   "waybar/style.css"
   "waybar/theme.css"
+  "wofi/config"
+  "wofi/style.css"
+  "wofi/theme.css"
 )
 
 for path in "${required_paths[@]}"; do

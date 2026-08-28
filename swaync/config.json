@@ -1,0 +1,111 @@
+{
+  "$schema": "/etc/xdg/swaync/configSchema.json",
+  "ignore-gtk-theme": true,
+  "cssPriority": "user",
+  "positionX": "right",
+  "positionY": "top",
+  "layer": "overlay",
+  "control-center-layer": "overlay",
+  "layer-shell": true,
+  "layer-shell-cover-screen": true,
+  "control-center-exclusive-zone": true,
+  "control-center-margin-top": 10,
+  "control-center-margin-bottom": 10,
+  "control-center-margin-right": 10,
+  "control-center-margin-left": 10,
+  "fit-to-screen": true,
+  "control-center-width": 420,
+  "notification-window-width": 400,
+  "notification-window-height": -1,
+  "notification-2fa-action": false,
+  "notification-inline-replies": false,
+  "timeout": 6,
+  "timeout-low": 4,
+  "timeout-critical": 0,
+  "relative-timestamps": true,
+  "keyboard-shortcuts": true,
+  "notification-grouping": true,
+  "image-visibility": "when-available",
+  "transition-time": 120,
+  "hide-on-clear": false,
+  "hide-on-action": true,
+  "text-empty": "No notifications",
+  "script-fail-notify": false,
+  "widgets": [
+    "buttons-grid#quick-settings",
+    "mpris",
+    "volume",
+    "slider#backlight",
+    "dnd",
+    "title",
+    "notifications"
+  ],
+  "widget-config": {
+    "buttons-grid#quick-settings": {
+      "buttons-per-row": 4,
+      "actions": [
+        {
+          "label": "󰤨",
+          "type": "toggle",
+          "active": true,
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then nmcli radio wifi on; else nmcli radio wifi off; fi'",
+          "update-command": "sh -c 'if [ \"$(LC_ALL=C nmcli radio wifi)\" = enabled ]; then echo true; else echo false; fi'"
+        },
+        {
+          "label": "",
+          "type": "toggle",
+          "active": false,
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then bluetoothctl power on; else bluetoothctl power off; fi'",
+          "update-command": "sh -c 'if LC_ALL=C bluetoothctl show | grep -q \"Powered: yes\"; then echo true; else echo false; fi'"
+        },
+        {
+          "label": "󰍬",
+          "type": "toggle",
+          "active": true,
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0; else wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1; fi'",
+          "update-command": "sh -c 'if LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q \"\\[MUTED\\]\"; then echo false; else echo true; fi'"
+        },
+        {
+          "label": "󰕾",
+          "type": "toggle",
+          "active": true,
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; else wpctl set-mute @DEFAULT_AUDIO_SINK@ 1; fi'",
+          "update-command": "sh -c 'if LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q \"\\[MUTED\\]\"; then echo false; else echo true; fi'"
+        }
+      ]
+    },
+    "mpris": {
+      "blacklist": [
+        "playerctld"
+      ],
+      "autohide": true,
+      "show-album-art": "when-available",
+      "loop-carousel": false
+    },
+    "volume": {
+      "label": "󰕾",
+      "show-per-app": false
+    },
+    "slider#backlight": {
+      "label": "󰃠",
+      "cmd_getter": "brightnessctl -m | cut -d, -f4 | tr -d '%'",
+      "cmd_setter": "brightnessctl set $value%",
+      "min": 5,
+      "max": 100,
+      "min_limit": 5,
+      "max_limit": 100,
+      "value_scale": 0
+    },
+    "dnd": {
+      "text": "Do not disturb"
+    },
+    "title": {
+      "text": "CASSAN // NOTIFICATIONS",
+      "clear-all-button": true,
+      "button-text": "Clear"
+    },
+    "notifications": {
+      "vexpand": true
+    }
+  }
+}

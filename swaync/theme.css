@@ -36,3 +36,32 @@
 @define-color cassan-urgent #D56A7B;
 @define-color cassan-warm-accent #D89B55;
 @define-color cassan-shadow rgba(0, 0, 0, 0.28);
+
+:root {
+  --cc-bg: #151B1D;
+  --noti-border-color: #76548F;
+  --noti-bg: 21, 27, 29;
+  --noti-bg-alpha: 1.0;
+  --noti-bg-darker: #0B1715;
+  --noti-bg-hover: #211A2C;
+  --noti-bg-focus: rgba(161, 115, 201, 0.18);
+  --noti-close-bg: #211A2C;
+  --noti-close-bg-hover: #76548F;
+  --text-color: #F2D7DF;
+  --text-color-disabled: #9D97A6;
+  --bg-selected: #A173C9;
+  --border: 1px solid #76548F;
+  --border-radius: 4px;
+  --notification-shadow: none;
+  --notification-icon-size: 48px;
+  --notification-group-icon-size: 24px;
+  --font-size-body: 14px;
+  --font-size-summary: 15px;
+  --mpris-album-art-overlay: rgba(11, 23, 21, 0.90);
+  --mpris-button-hover: #211A2C;
+  --mpris-album-art-icon-size: 72px;
+  --mpris-album-art-shadow: none;
+  --widget-volume-row-icon-size: 20px;
+  --hover-tranistion: background 120ms ease-out;
+  --group-collapse-tranistion: opacity 180ms ease-out;
+}

@@ -33,6 +33,16 @@ REQUIRED_ROLES = {
     "warm_accent",
     "urgent",
 }
+REQUIRED_TERMINAL_COLORS = {
+    "background",
+    "foreground",
+    "selection_background",
+    "selection_foreground",
+    "cursor",
+    "cursor_text",
+    "url",
+    *(f"color{index}" for index in range(16)),
+}
 
 
 def parse_scalar(value: str):
@@ -87,6 +97,7 @@ def validate_palette() -> None:
     slug = palette.get("slug")
     colors = palette.get("colors", {})
     roles = palette.get("roles", {})
+    terminal = palette.get("terminal", {})
     typography = palette.get("typography", {})
     geometry = palette.get("geometry", {})
     animation = palette.get("animation", {})
@@ -113,6 +124,28 @@ def validate_palette() -> None:
     unknown_roles = {name: value for name, value in roles.items() if value not in colors}
     if unknown_roles:
         raise ValueError(f"palette roles reference unknown colors: {unknown_roles}")
+
+    terminal_keys = set(terminal)
+    if terminal_keys != REQUIRED_TERMINAL_COLORS:
+        missing = sorted(REQUIRED_TERMINAL_COLORS - terminal_keys)
+        unexpected = sorted(terminal_keys - REQUIRED_TERMINAL_COLORS)
+        details = []
+        if missing:
+            details.append(f"missing {missing}")
+        if unexpected:
+            details.append(f"unexpected {unexpected}")
+        raise ValueError(
+            "terminal palette must define its exact color contract: "
+            + "; ".join(details)
+        )
+
+    unknown_terminal_colors = {
+        name: value for name, value in terminal.items() if value not in colors
+    }
+    if unknown_terminal_colors:
+        raise ValueError(
+            f"terminal palette references unknown colors: {unknown_terminal_colors}"
+        )
 
     if not typography.get("desktop_font") or not typography.get("terminal_font"):
         raise ValueError("palette must define desktop and terminal fonts")

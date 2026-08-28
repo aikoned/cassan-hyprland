@@ -1,0 +1,229 @@
+@import url("theme.css");
+
+.control-center,
+.floating-notifications {
+  font-family: "Iosevka Nerd Font";
+  font-size: 14px;
+}
+
+.control-center {
+  background: @cassan-panel;
+  color: @cassan-text;
+  border: 2px solid @cassan-focus-inactive;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: none;
+}
+
+.blank-window,
+.floating-notifications,
+.control-center-list {
+  background: transparent;
+}
+
+.widget-buttons-grid {
+  margin: 2px 4px 6px;
+  padding: 0;
+  background: transparent;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+  min-height: 44px;
+  margin: 3px;
+  padding: 8px;
+  background: @cassan-panel-alternate;
+  color: @cassan-text-secondary;
+  border: 1px solid @cassan-focus-inactive;
+  border-radius: 4px;
+  box-shadow: none;
+  font-size: 18px;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+  background: @cassan-focus-inactive;
+  color: @cassan-text;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
+  background: @cassan-focus;
+  color: @cassan-background;
+  border-color: @cassan-focus;
+}
+
+.widget-mpris,
+.widget-volume,
+.widget-slider,
+.widget-dnd {
+  margin: 4px;
+  padding: 10px;
+  background: @cassan-panel-alternate;
+  border: 1px solid @cassan-focus-inactive;
+  border-radius: 4px;
+}
+
+.widget-mpris .widget-mpris-player {
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.widget-mpris .mpris-background {
+  filter: none;
+  opacity: 0.15;
+}
+
+.widget-mpris .mpris-overlay {
+  background: rgba(11, 23, 21, 0.90);
+}
+
+.widget-mpris-title {
+  color: @cassan-text;
+}
+
+.widget-mpris-subtitle {
+  color: @cassan-text-muted;
+}
+
+.widget-volume > label,
+.widget-slider > label,
+.widget-dnd > label {
+  color: @cassan-text-secondary;
+}
+
+.widget-volume scale trough,
+.widget-slider scale trough {
+  min-height: 6px;
+  background: @cassan-background;
+  border-radius: 3px;
+}
+
+.widget-volume scale highlight,
+.widget-slider scale highlight {
+  background: @cassan-focus;
+  border-radius: 3px;
+}
+
+.widget-volume scale slider,
+.widget-slider scale slider {
+  min-width: 14px;
+  min-height: 14px;
+  background: @cassan-text-secondary;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.widget-dnd > switch {
+  background: @cassan-background;
+  border: 1px solid @cassan-focus-inactive;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.widget-dnd > switch:checked {
+  background: @cassan-focus;
+}
+
+.widget-dnd > switch slider {
+  background: @cassan-text-secondary;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+.widget-title {
+  margin: 6px 4px 2px;
+  padding: 4px 8px;
+  background: transparent;
+}
+
+.widget-title > label {
+  color: @cassan-text;
+  font-size: 16px;
+}
+
+.widget-title > button {
+  padding: 5px 9px;
+  background: @cassan-panel-alternate;
+  color: @cassan-text-secondary;
+  border: 1px solid @cassan-focus-inactive;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.widget-title > button:hover {
+  background: @cassan-focus-inactive;
+  color: @cassan-text;
+}
+
+.notification-row .notification-background .notification {
+  background: @cassan-panel;
+  color: @cassan-text;
+  border: 1px solid @cassan-focus-inactive;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.control-center .notification-background {
+  padding: 4px;
+}
+
+.control-center .notification-background .notification {
+  background: @cassan-panel-alternate;
+}
+
+.floating-notifications .notification-background {
+  padding: 10px 10px 0;
+}
+
+.floating-notifications .notification {
+  border-width: 2px;
+}
+
+.notification.critical {
+  border-color: @cassan-urgent;
+}
+
+.notification .summary {
+  color: @cassan-text;
+}
+
+.notification .time,
+.notification .body {
+  color: @cassan-text-muted;
+}
+
+.notification-default-action,
+.notification-action {
+  color: @cassan-text-secondary;
+  box-shadow: none;
+}
+
+.notification-action {
+  background: @cassan-background;
+  border-top: 1px solid @cassan-focus-inactive;
+}
+
+.notification-default-action:hover,
+.notification-action:hover {
+  background: @cassan-focus-inactive;
+  color: @cassan-text;
+}
+
+.close-button {
+  background: @cassan-panel-alternate;
+  color: @cassan-text-secondary;
+  border: 0;
+  box-shadow: none;
+}
+
+.close-button:hover {
+  background: @cassan-urgent;
+  color: @cassan-background;
+}
+
+.control-center-list-placeholder {
+  color: @cassan-text-muted;
+  opacity: 1;
+}

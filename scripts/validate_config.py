@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Cassan's strict JSON and modular Lua configuration."""
+"""Validate Cassan's portable desktop configuration contracts."""
 
 from __future__ import annotations
 
@@ -15,6 +15,9 @@ from typing import Any
 REPO_DIR = Path(__file__).resolve().parent.parent
 WAYBAR_CONFIG = REPO_DIR / "waybar" / "config.jsonc"
 HYPR_ENTRYPOINT = REPO_DIR / "hypr" / "hyprland.lua"
+KITTY_CONFIG = REPO_DIR / "kitty" / "kitty.conf"
+WOFI_CONFIG = REPO_DIR / "wofi" / "config"
+SWAYNC_CONFIG = REPO_DIR / "swaync" / "config.json"
 
 EXPECTED_WAYBAR_CLUSTERS = {
     "modules-left": ["custom/cassan", "hyprland/workspaces", "mpris"],
@@ -43,6 +46,111 @@ EXPECTED_HYPR_MODULES = (
     "startup",
     "bind",
 )
+
+EXPECTED_WOFI_SETTINGS = {
+    "show": "drun",
+    "prompt": "Launch",
+    "width": "34%",
+    "lines": "7",
+    "columns": "1",
+    "location": "center",
+    "layer": "overlay",
+    "orientation": "vertical",
+    "halign": "fill",
+    "content_halign": "fill",
+    "valign": "start",
+    "dynamic_lines": "true",
+    "allow_images": "true",
+    "image_size": "32",
+    "allow_markup": "false",
+    "hide_scroll": "true",
+    "matching": "fuzzy",
+    "insensitive": "true",
+    "parse_search": "true",
+    "filter_rate": "100",
+    "sort_order": "default",
+    "no_custom_entry": "true",
+    "close_on_focus_loss": "true",
+    "single_click": "true",
+    "term": "kitty",
+    "key_up": "Ctrl-k,Up",
+    "key_down": "Ctrl-j,Down",
+    "key_submit": "Return,KP_Enter",
+    "key_exit": "Escape",
+    "key_expand": "Alt-l",
+    "drun-display_generic": "false",
+    "drun-ignore_metadata": "false",
+}
+
+EXPECTED_SWAYNC_WIDGETS = [
+    "buttons-grid#quick-settings",
+    "mpris",
+    "volume",
+    "slider#backlight",
+    "dnd",
+    "title",
+    "notifications",
+]
+
+EXPECTED_SWAYNC_WIDGET_CONFIGS = set(EXPECTED_SWAYNC_WIDGETS)
+
+EXPECTED_SWAYNC_TOP_LEVEL_KEYS = {
+    "$schema",
+    "ignore-gtk-theme",
+    "cssPriority",
+    "positionX",
+    "positionY",
+    "layer",
+    "control-center-layer",
+    "layer-shell",
+    "layer-shell-cover-screen",
+    "control-center-exclusive-zone",
+    "control-center-margin-top",
+    "control-center-margin-bottom",
+    "control-center-margin-right",
+    "control-center-margin-left",
+    "fit-to-screen",
+    "control-center-width",
+    "notification-window-width",
+    "notification-window-height",
+    "notification-2fa-action",
+    "notification-inline-replies",
+    "timeout",
+    "timeout-low",
+    "timeout-critical",
+    "relative-timestamps",
+    "keyboard-shortcuts",
+    "notification-grouping",
+    "image-visibility",
+    "transition-time",
+    "hide-on-clear",
+    "hide-on-action",
+    "text-empty",
+    "script-fail-notify",
+    "widgets",
+    "widget-config",
+}
+
+SWAYNC_TOGGLE_CONTRACTS = {
+    "󰤨": ("nmcli radio wifi", "nmcli radio wifi"),
+    "": ("bluetoothctl power", "bluetoothctl show"),
+    "󰍬": (
+        "wpctl set-mute @DEFAULT_AUDIO_SOURCE@",
+        "wpctl get-volume @DEFAULT_AUDIO_SOURCE@",
+    ),
+    "󰕾": (
+        "wpctl set-mute @DEFAULT_AUDIO_SINK@",
+        "wpctl get-volume @DEFAULT_AUDIO_SINK@",
+    ),
+}
+
+DEPRECATED_SWAYNC_KEYS = {
+    "notification-icon-size",
+    "image-size",
+    "image-radius",
+    "icon-size",
+    "right-click-command",
+}
 
 REQUIRE_RE = re.compile(
     r"\brequire\s*(?:\(\s*)?(['\"])([A-Za-z0-9_./-]+)\1\s*\)?"
@@ -117,6 +225,264 @@ def validate_waybar() -> None:
             )
 
 
+def read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValidationError(f"cannot read {path.relative_to(REPO_DIR)}: {exc}") from exc
+
+
+def reject_machine_paths(source: str, label: str) -> None:
+    for prefix in ("/home/", "/Users/"):
+        if prefix in source:
+            raise ValidationError(f"{label} contains a machine-specific path: {prefix}")
+
+
+def parse_directives(path: Path) -> dict[str, str]:
+    directives: dict[str, str] = {}
+    for line_number, source_line in enumerate(read_text(path).splitlines(), 1):
+        line = source_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: expected directive and value"
+            )
+        key, value = parts
+        if key in directives:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: duplicate directive {key!r}"
+            )
+        directives[key] = value
+    return directives
+
+
+def validate_kitty() -> None:
+    source = read_text(KITTY_CONFIG)
+    reject_machine_paths(source, "kitty/kitty.conf")
+    directives = parse_directives(KITTY_CONFIG)
+
+    required = {
+        "include": "theme.conf",
+        "shell": ".",
+        "shell_integration": "enabled",
+        "background_opacity": "1.0",
+        "dynamic_background_opacity": "no",
+        "background_blur": "0",
+        "copy_on_select": "no",
+        "enable_audio_bell": "no",
+    }
+    for key, expected in required.items():
+        actual = directives.get(key)
+        if actual != expected:
+            raise ValidationError(
+                f"kitty/kitty.conf {key} must be {expected!r}; found {actual!r}"
+            )
+
+    forbidden = {
+        "allow_remote_control",
+        "input_delay",
+        "linux_display_server",
+        "repaint_delay",
+        "remote_control_password",
+        "sync_to_monitor",
+    }
+    present = sorted(forbidden.intersection(directives))
+    if present:
+        raise ValidationError(
+            "kitty/kitty.conf must retain portable upstream defaults for: "
+            + ", ".join(present)
+        )
+
+
+def parse_assignments(path: Path) -> dict[str, str]:
+    settings: dict[str, str] = {}
+    for line_number, source_line in enumerate(read_text(path).splitlines(), 1):
+        line = source_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: expected key=value"
+            )
+        key, value = (part.strip() for part in line.split("=", 1))
+        if not key or key in settings:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: empty or duplicate key"
+            )
+        settings[key] = value
+    return settings
+
+
+def validate_wofi() -> None:
+    source = read_text(WOFI_CONFIG)
+    reject_machine_paths(source, "wofi/config")
+    settings = parse_assignments(WOFI_CONFIG)
+    if settings != EXPECTED_WOFI_SETTINGS:
+        missing = sorted(set(EXPECTED_WOFI_SETTINGS) - set(settings))
+        unexpected = sorted(set(settings) - set(EXPECTED_WOFI_SETTINGS))
+        changed = sorted(
+            key
+            for key in set(settings).intersection(EXPECTED_WOFI_SETTINGS)
+            if settings[key] != EXPECTED_WOFI_SETTINGS[key]
+        )
+        details = []
+        if missing:
+            details.append(f"missing {missing}")
+        if unexpected:
+            details.append(f"unexpected {unexpected}")
+        if changed:
+            details.append(f"changed {changed}")
+        raise ValidationError("wofi/config violates its portable launcher contract: " + "; ".join(details))
+
+
+def nested_keys(value: Any):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield key
+            yield from nested_keys(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from nested_keys(child)
+
+
+def validate_swaync() -> None:
+    config = load_strict_json(SWAYNC_CONFIG)
+    if not isinstance(config, dict):
+        raise ValidationError("swaync/config.json must contain one JSON object")
+
+    source = read_text(SWAYNC_CONFIG)
+    reject_machine_paths(source, "swaync/config.json")
+    for hardware_name in ("intel_backlight", "amdgpu_bl", "acpi_video"):
+        if hardware_name in source:
+            raise ValidationError(
+                f"swaync/config.json hardcodes a backlight device: {hardware_name}"
+            )
+
+    deprecated = sorted(DEPRECATED_SWAYNC_KEYS.intersection(nested_keys(config)))
+    if deprecated:
+        raise ValidationError(
+            "swaync/config.json uses deprecated or unsupported fields: "
+            + ", ".join(deprecated)
+        )
+
+    expected_top_level = {
+        "$schema": "/etc/xdg/swaync/configSchema.json",
+        "ignore-gtk-theme": True,
+        "cssPriority": "user",
+        "positionX": "right",
+        "positionY": "top",
+        "layer": "overlay",
+        "control-center-layer": "overlay",
+        "layer-shell": True,
+        "layer-shell-cover-screen": True,
+        "control-center-exclusive-zone": True,
+        "control-center-margin-top": 10,
+        "control-center-margin-bottom": 10,
+        "control-center-margin-right": 10,
+        "control-center-margin-left": 10,
+        "fit-to-screen": True,
+        "control-center-width": 420,
+        "notification-window-width": 400,
+        "notification-window-height": -1,
+        "notification-2fa-action": False,
+        "notification-inline-replies": False,
+        "timeout": 6,
+        "timeout-low": 4,
+        "timeout-critical": 0,
+        "relative-timestamps": True,
+        "notification-grouping": True,
+        "image-visibility": "when-available",
+        "transition-time": 120,
+        "keyboard-shortcuts": True,
+        "hide-on-clear": False,
+        "hide-on-action": True,
+        "text-empty": "No notifications",
+        "script-fail-notify": False,
+    }
+    if set(config) != EXPECTED_SWAYNC_TOP_LEVEL_KEYS:
+        missing = sorted(EXPECTED_SWAYNC_TOP_LEVEL_KEYS - set(config))
+        unexpected = sorted(set(config) - EXPECTED_SWAYNC_TOP_LEVEL_KEYS)
+        raise ValidationError(
+            "swaync/config.json top-level fields do not match the 0.12.6 contract: "
+            f"missing {missing}; unexpected {unexpected}"
+        )
+    for key, expected in expected_top_level.items():
+        actual = config.get(key)
+        if actual != expected:
+            raise ValidationError(
+                f"swaync/config.json {key} must be {expected!r}; found {actual!r}"
+            )
+
+    if "control-center-height" in config:
+        raise ValidationError(
+            "swaync/config.json must stay responsive instead of setting control-center-height"
+        )
+    if "scripts" in config or "notification-visibility" in config:
+        raise ValidationError(
+            "swaync/config.json must not run scripts for incoming notifications"
+        )
+    if config.get("widgets") != EXPECTED_SWAYNC_WIDGETS:
+        raise ValidationError(
+            f"swaync/config.json widgets must be {EXPECTED_SWAYNC_WIDGETS!r}"
+        )
+
+    widget_config = config.get("widget-config")
+    if not isinstance(widget_config, dict):
+        raise ValidationError("swaync/config.json widget-config must be an object")
+    if set(widget_config) != EXPECTED_SWAYNC_WIDGET_CONFIGS:
+        raise ValidationError(
+            "swaync/config.json widget-config keys must match the widget stack"
+        )
+
+    quick_settings = widget_config["buttons-grid#quick-settings"]
+    if quick_settings.get("buttons-per-row") != 4:
+        raise ValidationError("SwayNC quick settings must use one row of four buttons")
+    actions = quick_settings.get("actions")
+    if not isinstance(actions, list) or len(actions) != len(SWAYNC_TOGGLE_CONTRACTS):
+        raise ValidationError("SwayNC quick settings must define four toggle actions")
+
+    labels = []
+    for action in actions:
+        if not isinstance(action, dict):
+            raise ValidationError("each SwayNC quick setting must be an object")
+        label = action.get("label")
+        labels.append(label)
+        contract = SWAYNC_TOGGLE_CONTRACTS.get(label)
+        if contract is None:
+            raise ValidationError(f"unexpected SwayNC quick-setting label: {label!r}")
+        if action.get("type") != "toggle":
+            raise ValidationError(f"SwayNC quick setting {label!r} must be a toggle")
+        if not isinstance(action.get("active"), bool):
+            raise ValidationError(
+                f"SwayNC quick setting {label!r} must define a boolean active fallback"
+            )
+        command = action.get("command", "")
+        update_command = action.get("update-command", "")
+        if "SWAYNC_TOGGLE_STATE" not in command:
+            raise ValidationError(f"SwayNC quick setting {label!r} ignores its toggle state")
+        if contract[0] not in command or contract[1] not in update_command:
+            raise ValidationError(f"SwayNC quick setting {label!r} violates its command contract")
+    if set(labels) != set(SWAYNC_TOGGLE_CONTRACTS):
+        raise ValidationError("SwayNC quick-setting labels must be unique")
+
+    backlight = widget_config["slider#backlight"]
+    if backlight.get("cmd_getter") != "brightnessctl -m | cut -d, -f4 | tr -d '%'":
+        raise ValidationError("SwayNC brightness getter must use portable brightnessctl detection")
+    if backlight.get("cmd_setter") != "brightnessctl set $value%":
+        raise ValidationError("SwayNC brightness setter must use brightnessctl")
+
+
+def validate_style_import(path: Path) -> None:
+    source = read_text(path)
+    reject_machine_paths(source, str(path.relative_to(REPO_DIR)))
+    if not source.startswith('@import url("theme.css");\n'):
+        raise ValidationError(
+            f"{path.relative_to(REPO_DIR)} must import its generated theme first"
+        )
+
+
 def lua_requires(source: str) -> list[str]:
     """Extract simple require calls in source order, ignoring line comments."""
     modules: list[str] = []
@@ -182,12 +548,17 @@ def main() -> int:
     try:
         validate_waybar()
         lua_files = validate_hypr()
+        validate_kitty()
+        validate_wofi()
+        validate_swaync()
+        validate_style_import(REPO_DIR / "wofi" / "style.css")
+        validate_style_import(REPO_DIR / "swaync" / "style.css")
         compile_lua(lua_files)
     except ValidationError as exc:
         print(f"configuration validation failed: {exc}", file=sys.stderr)
         return 1
 
-    print("Waybar structure and Hyprland module validation passed.")
+    print("Desktop configuration contracts passed.")
     return 0
 
 
