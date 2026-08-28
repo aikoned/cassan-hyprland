@@ -15,6 +15,8 @@ required_paths=(
   "hypr/bind.lua"
   "hypr/environment.lua"
   "hypr/hyprland.lua"
+  "hypr/hypridle.conf"
+  "hypr/hyprlock.conf"
   "hypr/hyprpaper.conf"
   "hypr/input.lua"
   "hypr/looknfeel.lua"

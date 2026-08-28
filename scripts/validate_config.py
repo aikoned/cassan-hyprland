@@ -18,6 +18,9 @@ from validate_toml import load as load_toml
 REPO_DIR = Path(__file__).resolve().parent.parent
 WAYBAR_CONFIG = REPO_DIR / "waybar" / "config.jsonc"
 HYPR_ENTRYPOINT = REPO_DIR / "hypr" / "hyprland.lua"
+HYPR_STARTUP = REPO_DIR / "hypr" / "startup.lua"
+HYPRLOCK_CONFIG = REPO_DIR / "hypr" / "hyprlock.conf"
+HYPRIDLE_CONFIG = REPO_DIR / "hypr" / "hypridle.conf"
 KITTY_CONFIG = REPO_DIR / "kitty" / "kitty.conf"
 WOFI_CONFIG = REPO_DIR / "wofi" / "config"
 SWAYNC_CONFIG = REPO_DIR / "swaync" / "config.json"
@@ -255,6 +258,30 @@ EXPECTED_CAVA_CONFIG = {
     "smoothing": {"monstercat": "0", "waves": "0", "noise_reduction": "77"},
 }
 
+EXPECTED_HYPRIDLE_GENERAL = {
+    "lock_cmd": "pidof hyprlock || hyprlock",
+    "before_sleep_cmd": "loginctl lock-session",
+    "after_sleep_cmd": "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'",
+    "ignore_dbus_inhibit": "false",
+    "ignore_systemd_inhibit": "false",
+    "ignore_wayland_inhibit": "false",
+    "inhibit_sleep": "3",
+}
+
+EXPECTED_HYPRIDLE_LISTENERS = [
+    {
+        "timeout": "300",
+        "on-timeout": "loginctl lock-session",
+        "ignore_inhibit": "false",
+    },
+    {
+        "timeout": "330",
+        "on-timeout": "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'",
+        "on-resume": "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'",
+        "ignore_inhibit": "false",
+    },
+]
+
 REQUIRE_RE = re.compile(
     r"\brequire\s*(?:\(\s*)?(['\"])([A-Za-z0-9_./-]+)\1\s*\)?"
 )
@@ -416,6 +443,68 @@ def parse_assignments(path: Path) -> dict[str, str]:
             )
         settings[key] = value
     return settings
+
+
+def parse_hypr_blocks(path: Path) -> list[tuple[str, dict[str, list[str]]]]:
+    """Parse Cassan's flat Hyprlock/Hypridle block subset without executing it."""
+    blocks: list[tuple[str, dict[str, list[str]]]] = []
+    block_name = None
+    settings: dict[str, list[str]] = {}
+
+    for line_number, source_line in enumerate(read_text(path).splitlines(), 1):
+        line = source_line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        if block_name is None:
+            match = re.fullmatch(r"([A-Za-z][A-Za-z0-9_-]*)\s*\{", line)
+            if not match:
+                raise ValidationError(
+                    f"{path.relative_to(REPO_DIR)}:{line_number}: expected a block"
+                )
+            block_name = match.group(1)
+            settings = {}
+            continue
+
+        if line == "}":
+            blocks.append((block_name, settings))
+            block_name = None
+            settings = {}
+            continue
+
+        if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*\s*\{", line):
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: nested blocks are not supported"
+            )
+        if "=" not in line:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: expected key = value"
+            )
+        key, value = (part.strip() for part in line.split("=", 1))
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", key):
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)}:{line_number}: invalid key {key!r}"
+            )
+        settings.setdefault(key, []).append(value)
+
+    if block_name is not None:
+        raise ValidationError(
+            f"{path.relative_to(REPO_DIR)}: unterminated {block_name!r} block"
+        )
+    return blocks
+
+
+def single_value_block(
+    path: Path, block_name: str, settings: dict[str, list[str]]
+) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for key, candidates in settings.items():
+        if len(candidates) != 1:
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)} {block_name}.{key} must occur once"
+            )
+        values[key] = candidates[0]
+    return values
 
 
 def validate_wofi() -> None:
@@ -691,6 +780,174 @@ def validate_cava() -> None:
             raise ValidationError(f"Cava theme {key} is not a six-digit hex color")
 
 
+def validate_hyprlock() -> None:
+    """Validate portable and security-sensitive lock-screen invariants.
+
+    Exact generated styling is checked by render_theme.py --check. Keeping this
+    validator focused on invariants avoids duplicating palette and geometry data.
+    """
+    source = read_text(HYPRLOCK_CONFIG)
+    reject_machine_paths(source, "hypr/hyprlock.conf")
+    if "aikon" in source.lower():
+        raise ValidationError("Hyprlock must discover the current user instead of naming aikon")
+    if "path = screenshot" in source:
+        raise ValidationError("Hyprlock must not expose the live desktop as its background")
+
+    blocks = parse_hypr_blocks(HYPRLOCK_CONFIG)
+    names = [name for name, _ in blocks]
+    expected_names = [
+        "general",
+        "animations",
+        "background",
+        "shape",
+        "label",
+        "label",
+        "label",
+        "label",
+        "input-field",
+        "label",
+    ]
+    if names != expected_names:
+        raise ValidationError(
+            f"hypr/hyprlock.conf widgets must be {expected_names!r}; found {names!r}"
+        )
+
+    general = single_value_block(HYPRLOCK_CONFIG, "general", blocks[0][1])
+    required_general = {
+        "hide_cursor": "true",
+        "ignore_empty_input": "true",
+        "immediate_render": "true",
+    }
+    for key, expected in required_general.items():
+        if general.get(key) != expected:
+            raise ValidationError(
+                f"Hyprlock general.{key} must be {expected!r}; found {general.get(key)!r}"
+            )
+    if "grace" in general:
+        raise ValidationError("Hyprlock must not weaken authentication with a grace period")
+    try:
+        fail_timeout = int(general.get("fail_timeout", ""))
+    except ValueError as exc:
+        raise ValidationError("Hyprlock general.fail_timeout must be an integer") from exc
+    if not 500 <= fail_timeout <= 3000:
+        raise ValidationError("Hyprlock failure feedback must clear within 0.5–3 seconds")
+
+    animations = blocks[1][1]
+    animation_names = [
+        value.split(",", 1)[0].strip() for value in animations.get("animation", [])
+    ]
+    if animations.get("enabled") != ["true"] or animation_names != [
+        "fadeIn",
+        "fadeOut",
+        "inputFieldColors",
+        "inputFieldDots",
+    ]:
+        raise ValidationError("Hyprlock must retain its restrained animation contract")
+
+    background = single_value_block(HYPRLOCK_CONFIG, "background", blocks[2][1])
+    wallpaper = background.get("path", "")
+    if not wallpaper.startswith("~/.config/cassan/assets/") or not wallpaper.lower().endswith(
+        (".jpg", ".jpeg", ".png", ".webp")
+    ):
+        raise ValidationError("Hyprlock must load a portable Cassan wallpaper asset")
+    if any(
+        background.get(key) != expected
+        for key, expected in {
+            "monitor": "",
+            "blur_passes": "0",
+            "noise": "0.0",
+            "vibrancy": "0.0",
+            "vibrancy_darkness": "0.0",
+        }.items()
+    ):
+        raise ValidationError("Hyprlock background must use the unblurred Nighthowler wallpaper")
+
+    shape = single_value_block(HYPRLOCK_CONFIG, "shape", blocks[3][1])
+    if (
+        shape.get("monitor") != ""
+        or shape.get("halign") != "right"
+        or shape.get("valign") != "center"
+        or shape.get("zindex") != "1"
+        or not re.fullmatch(r"rgba\([0-9A-Fa-f]{6}FF\)", shape.get("color", ""))
+    ):
+        raise ValidationError("Hyprlock must keep one opaque right-side authentication panel")
+
+    label_blocks = [
+        single_value_block(HYPRLOCK_CONFIG, "label", settings)
+        for name, settings in blocks
+        if name == "label"
+    ]
+    texts = [label.get("text", "") for label in label_blocks]
+    if (
+        "CASSAN // LOCKED" not in texts
+        or "$TIME" not in texts
+        or not any(text.startswith("cmd[update:") and " date " in text for text in texts)
+        or not any("$USER" in text for text in texts)
+        or not any("ESC TO CLEAR" in text for text in texts)
+    ):
+        raise ValidationError("Hyprlock labels must remain dynamic and machine-independent")
+    for label in label_blocks:
+        if label.get("monitor") != "" or label.get("halign") != "right":
+            raise ValidationError("Hyprlock labels must work on every monitor from the right rail")
+        if label.get("zindex") != "2":
+            raise ValidationError("Hyprlock labels must render above the authentication panel")
+
+    input_field = single_value_block(HYPRLOCK_CONFIG, "input-field", blocks[8][1])
+    if (
+        input_field.get("monitor") != ""
+        or input_field.get("halign") != "right"
+        or input_field.get("valign") != "center"
+        or input_field.get("zindex") != "2"
+        or input_field.get("hide_input") != "false"
+        or "PASSWORD" not in input_field.get("placeholder_text", "")
+        or "$ATTEMPTS" not in input_field.get("fail_text", "")
+    ):
+        raise ValidationError("Hyprlock password field violates the Nighthowler auth contract")
+
+    for name, settings in blocks[2:]:
+        if settings.get("monitor") != [""]:
+            raise ValidationError(f"Hyprlock {name} hardcodes a monitor")
+
+
+def validate_hypridle() -> None:
+    source = read_text(HYPRIDLE_CONFIG)
+    reject_machine_paths(source, "hypr/hypridle.conf")
+    for forbidden in (
+        "systemctl suspend",
+        "systemctl hibernate",
+        "systemctl poweroff",
+        "brightnessctl",
+        "intel_backlight",
+        "amdgpu_bl",
+        "acpi_video",
+    ):
+        if forbidden in source:
+            raise ValidationError(
+                f"hypr/hypridle.conf contains unverified hardware behavior: {forbidden}"
+            )
+
+    blocks = parse_hypr_blocks(HYPRIDLE_CONFIG)
+    if [name for name, _ in blocks] != ["general", "listener", "listener"]:
+        raise ValidationError("Hypridle must contain one general block and two listeners")
+    general = single_value_block(HYPRIDLE_CONFIG, "general", blocks[0][1])
+    listeners = [
+        single_value_block(HYPRIDLE_CONFIG, "listener", settings)
+        for _, settings in blocks[1:]
+    ]
+    if general != EXPECTED_HYPRIDLE_GENERAL:
+        raise ValidationError("Hypridle general settings violate the lock-before-sleep contract")
+    if listeners != EXPECTED_HYPRIDLE_LISTENERS:
+        raise ValidationError("Hypridle must lock at 300 seconds and power displays off at 330")
+
+    startup = read_text(HYPR_STARTUP)
+    for command in ("hyprpaper", "waybar", "swaync", "hypridle"):
+        invocation = f'hl.exec_cmd("{command}")'
+        if startup.count(invocation) != 1:
+            raise ValidationError(f"hypr/startup.lua must launch {command} exactly once")
+    if "hypridle.service" in startup or "systemctl --user" in startup:
+        raise ValidationError("Cassan must not launch Hypridle both directly and as a service")
+
+
 def validate_style_import(path: Path) -> None:
     source = read_text(path)
     reject_machine_paths(source, str(path.relative_to(REPO_DIR)))
@@ -771,6 +1028,8 @@ def main() -> int:
         validate_yazi()
         validate_fastfetch()
         validate_cava()
+        validate_hyprlock()
+        validate_hypridle()
         validate_style_import(REPO_DIR / "wofi" / "style.css")
         validate_style_import(REPO_DIR / "swaync" / "style.css")
         compile_lua(lua_files)
