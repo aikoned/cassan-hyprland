@@ -1,0 +1,47 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Environment files, credentials, and keys
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials*
+secrets*
+
+# User-specific Cassan state
+local/*
+!local/README.md
+state/
+backups/
+logs/
+
+# User-owned or unlicensed media
+wallpapers/private/
+assets/*/private/
+
+# Generated preview and build output
+preview/dist/
+generated/
+build/
+__pycache__/
+*.py[cod]
+
+# Application data must never be versioned
+.mozilla/
+.config/discord/
+.config/vesktop/sessionData/
+.config/spotify/
+.ssh/
+.gnupg/
+.zsh_history
+.zcompdump*

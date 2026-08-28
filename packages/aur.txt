@@ -1,0 +1,7 @@
+# Optional AUR packages belong here only after source and maintenance review.
+# Keep the core desktop independent of this file.
+
+# Candidates to evaluate later:
+# vesktop-bin
+# spicetify-cli
+# wlogout

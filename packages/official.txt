@@ -1,0 +1,47 @@
+# Preliminary official Arch package names.
+# Revalidate every entry immediately before the laptop installation.
+
+# Desktop core
+hyprland
+waybar
+kitty
+wofi
+swaync
+hyprpaper
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+
+# Terminal surfaces
+yazi
+fastfetch
+cava
+btop
+
+# Documents
+zathura
+zathura-pdf-mupdf
+
+# Wayland utilities
+wl-clipboard
+grim
+slurp
+swappy
+brightnessctl
+playerctl
+zsh
+
+# Desktop services
+networkmanager
+pipewire
+pipewire-pulse
+wireplumber
+bluez
+bluez-utils
+blueman
+
+# Fonts and broad glyph coverage
+ttf-iosevka-nerd
+noto-fonts
+noto-fonts-cjk
+noto-fonts-emoji

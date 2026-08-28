@@ -1,0 +1,59 @@
+schema = 1
+name = "Cassan Nighthowler"
+slug = "nighthowler"
+
+[colors]
+forest = "#0B1715"
+plum = "#171225"
+surface = "#151B1D"
+surface_alt = "#211A2C"
+rose = "#F2D7DF"
+ivory = "#E8E1D6"
+muted = "#9D97A6"
+orchid = "#A173C9"
+orchid_dim = "#76548F"
+marigold = "#D89B55"
+critical = "#D56A7B"
+transparent = "#00000000"
+
+[roles]
+background = "forest"
+panel = "surface"
+panel_alternate = "surface_alt"
+text = "rose"
+text_secondary = "ivory"
+text_muted = "muted"
+focus = "orchid"
+focus_inactive = "orchid_dim"
+warm_accent = "marigold"
+urgent = "critical"
+
+[typography]
+desktop_font = "Iosevka Nerd Font"
+terminal_font = "Iosevka Nerd Font Mono"
+bar_size_px = 15
+launcher_size_px = 14
+terminal_size_pt = 12
+
+[geometry]
+border_px = 2
+rounding_px = 4
+gap_inner_px = 5
+gap_outer_px = 10
+bar_height_px = 40
+shadow_enabled = true
+blur_enabled = false
+opacity = 1.0
+
+[animation]
+character = "restrained"
+duration_fast_ms = 120
+duration_normal_ms = 180
+duration_slow_ms = 240
+overshoot = false
+
+[wallpaper]
+asset_policy = "user-supplied"
+focal_subject = "center"
+protect_face = true
+protect_eye = true
