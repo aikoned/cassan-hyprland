@@ -3,11 +3,23 @@ local mod = "SUPER"
 local terminal = "kitty"
 local launcher = "wofi --show drun --allow-images"
 local file_manager = "kitty --class cassan-yazi yazi"
+local task_manager = "kitty --class cassan-btop btop"
+local system_info = "kitty --class cassan-fastfetch fastfetch"
+local visualizer = "kitty --class cassan-cava cava"
+local browser = "firefox"
+local chat = "discord"
+local music = "spotify-launcher"
 
 -- Core applications and window state.
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd(terminal))
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd(launcher))
 hl.bind(mod .. " + E", hl.dsp.exec_cmd(file_manager))
+hl.bind(mod .. " + CTRL + ESCAPE", hl.dsp.exec_cmd(task_manager))
+hl.bind(mod .. " + I", hl.dsp.exec_cmd(system_info))
+hl.bind(mod .. " + C", hl.dsp.exec_cmd(visualizer))
+hl.bind(mod .. " + B", hl.dsp.exec_cmd(browser))
+hl.bind(mod .. " + D", hl.dsp.exec_cmd(chat))
+hl.bind(mod .. " + M", hl.dsp.exec_cmd(music))
 hl.bind(mod .. " + Q", hl.dsp.window.close())
 hl.bind(mod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
 hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))

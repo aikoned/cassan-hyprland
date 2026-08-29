@@ -103,6 +103,11 @@ DEPLOYMENTS: Tuple[Deployment, ...] = (
     Deployment("swaync/theme.css", "xdg_config", "swaync/theme.css"),
     Deployment("yazi/theme.toml", "xdg_config", "yazi/theme.toml"),
     Deployment(
+        "btop/themes/nighthowler.theme",
+        "xdg_config",
+        "btop/themes/nighthowler.theme",
+    ),
+    Deployment(
         "cava/themes/nighthowler",
         "xdg_config",
         "cava/themes/nighthowler",
@@ -120,10 +125,16 @@ DEPLOYMENTS: Tuple[Deployment, ...] = (
     Deployment("hypr/bind.lua", "xdg_config", "hypr/bind.lua"),
     Deployment("hypr/hypridle.conf", "xdg_config", "hypr/hypridle.conf"),
     Deployment("kitty/kitty.conf", "xdg_config", "kitty/kitty.conf"),
+    Deployment("btop/btop.conf", "xdg_config", "btop/btop.conf"),
     Deployment("waybar/style.css", "xdg_config", "waybar/style.css"),
     Deployment("waybar/config.jsonc", "xdg_config", "waybar/config.jsonc"),
     Deployment("wofi/style.css", "xdg_config", "wofi/style.css"),
     Deployment("wofi/config", "xdg_config", "wofi/config"),
+    Deployment(
+        "networkmanager-dmenu/config.ini",
+        "xdg_config",
+        "networkmanager-dmenu/config.ini",
+    ),
     Deployment("swaync/style.css", "xdg_config", "swaync/style.css"),
     Deployment("swaync/config.json", "xdg_config", "swaync/config.json"),
     Deployment("yazi/yazi.toml", "xdg_config", "yazi/yazi.toml"),
@@ -137,12 +148,12 @@ DEPLOYMENTS: Tuple[Deployment, ...] = (
     Deployment("hypr/hyprland.lua", "xdg_config", "hypr/hyprland.lua"),
 )
 
-if len(DEPLOYMENTS) != 30:  # pragma: no cover - protects future edits at import time
-    raise RuntimeError("the Cassan runtime deployment must contain exactly 30 files")
+if len(DEPLOYMENTS) != 33:  # pragma: no cover - protects future edits at import time
+    raise RuntimeError("the Cassan runtime deployment must contain exactly 33 files")
 
 OPTIONAL_DEPLOYMENT_COMPONENTS = ("cava", "fastfetch")
 
-# All 30 configuration files are always deployed so ownership never changes
+# All 33 configuration files are always deployed so ownership never changes
 # merely because an accessory package was omitted.  The Cava and Fastfetch
 # files are inert until their corresponding executables are installed.  Package
 # selection is therefore modular without making deployment state ambiguous.
@@ -157,24 +168,33 @@ CORE_PACKAGE_NAMES = frozenset(
         "hyprlock",
         "hypridle",
         "xdg-desktop-portal-hyprland",
+        "hyprpolkitagent",
         "git",
         "python",
+        "less",
         "yazi",
+        "btop",
         "grim",
         "slurp",
         "swappy",
         "brightnessctl",
         "playerctl",
+        "networkmanager-dmenu",
+        "nm-connection-editor",
+        "pavucontrol",
+        "libnotify",
         "networkmanager",
         "pipewire",
         "pipewire-pulse",
         "wireplumber",
         "bluez",
         "bluez-utils",
+        "blueman",
         "ttf-iosevka-nerd",
     )
 )
 OPTIONAL_PACKAGE_GROUPS = {
+    "apps": frozenset(("firefox", "discord", "spotify-launcher")),
     "cava": frozenset(("cava",)),
     "fastfetch": frozenset(("fastfetch",)),
 }
@@ -2372,8 +2392,8 @@ def parser() -> argparse.ArgumentParser:
         default=[],
         metavar="ACCESSORY",
         help=(
-            "include an optional configured accessory package; repeat for both "
-            "cava and fastfetch (all 30 inert config files are always deployed)"
+            "include an optional configured package group; repeat to combine "
+            "apps, cava, and fastfetch (all 33 inert config files are always deployed)"
         ),
     )
 

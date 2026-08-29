@@ -8,6 +8,8 @@ repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 required_paths=(
   ".zshrc"
   "assets/nighthowler/palette.toml"
+  "btop/btop.conf"
+  "btop/themes/nighthowler.theme"
   "cava/config"
   "cava/themes/nighthowler"
   "fastfetch/config.jsonc"
@@ -41,6 +43,7 @@ required_paths=(
   "wofi/config"
   "wofi/style.css"
   "wofi/theme.css"
+  "networkmanager-dmenu/config.ini"
   "yazi/theme.toml"
   "yazi/yazi.toml"
 )

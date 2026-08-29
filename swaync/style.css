@@ -45,7 +45,8 @@
   color: @cassan-text;
 }
 
-.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked,
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle.active {
   background: @cassan-focus;
   color: @cassan-background;
   border-color: @cassan-focus;

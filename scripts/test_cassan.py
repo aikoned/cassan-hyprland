@@ -91,6 +91,11 @@ class CassanDeploymentTests(unittest.TestCase):
             ("swaync/theme.css", "xdg_config", "swaync/theme.css"),
             ("yazi/theme.toml", "xdg_config", "yazi/theme.toml"),
             (
+                "btop/themes/nighthowler.theme",
+                "xdg_config",
+                "btop/themes/nighthowler.theme",
+            ),
+            (
                 "cava/themes/nighthowler",
                 "xdg_config",
                 "cava/themes/nighthowler",
@@ -107,10 +112,16 @@ class CassanDeploymentTests(unittest.TestCase):
             ("hypr/bind.lua", "xdg_config", "hypr/bind.lua"),
             ("hypr/hypridle.conf", "xdg_config", "hypr/hypridle.conf"),
             ("kitty/kitty.conf", "xdg_config", "kitty/kitty.conf"),
+            ("btop/btop.conf", "xdg_config", "btop/btop.conf"),
             ("waybar/style.css", "xdg_config", "waybar/style.css"),
             ("waybar/config.jsonc", "xdg_config", "waybar/config.jsonc"),
             ("wofi/style.css", "xdg_config", "wofi/style.css"),
             ("wofi/config", "xdg_config", "wofi/config"),
+            (
+                "networkmanager-dmenu/config.ini",
+                "xdg_config",
+                "networkmanager-dmenu/config.ini",
+            ),
             ("swaync/style.css", "xdg_config", "swaync/style.css"),
             ("swaync/config.json", "xdg_config", "swaync/config.json"),
             ("yazi/yazi.toml", "xdg_config", "yazi/yazi.toml"),
@@ -126,7 +137,7 @@ class CassanDeploymentTests(unittest.TestCase):
             (item.source, item.root, item.relative) for item in cassan.DEPLOYMENTS
         ]
         self.assertEqual(actual, expected)
-        self.assertEqual(len(cassan.DEPLOYMENTS), 30)
+        self.assertEqual(len(cassan.DEPLOYMENTS), 33)
         self.assertEqual(
             [item.component for item in cassan.DEPLOYMENTS],
             [
@@ -137,7 +148,10 @@ class CassanDeploymentTests(unittest.TestCase):
                 "core",
                 "core",
                 "core",
+                "core",
                 "cava",
+                "core",
+                "core",
                 "core",
                 "core",
                 "core",
@@ -686,16 +700,17 @@ class CassanDeploymentTests(unittest.TestCase):
 
     def test_package_selection_keeps_configs_stable_and_accessories_opt_in(self) -> None:
         non_blocking = [
-            "btop",
             "fastfetch",
             "lua",
             "file",
             "wl-clipboard",
-            "blueman",
             "noto-fonts",
             "zsh",
         ]
         manifest = non_blocking + sorted(cassan.CORE_PACKAGE_NAMES) + [
+            "discord",
+            "firefox",
+            "spotify-launcher",
             "cava",
             "zathura",
         ]
@@ -703,17 +718,23 @@ class CassanDeploymentTests(unittest.TestCase):
         self.assertEqual(core, sorted(cassan.CORE_PACKAGE_NAMES))
         self.assertNotIn("cava", core)
         self.assertNotIn("fastfetch", core)
-        self.assertNotIn("btop", core)
-        for package in ("lua", "file", "wl-clipboard", "blueman", "noto-fonts", "zsh"):
+        self.assertIn("btop", core)
+        for package in ("lua", "file", "wl-clipboard", "noto-fonts", "zsh"):
             self.assertNotIn(package, core)
-        selected = cassan.select_packages(manifest, ("cava", "fastfetch"))
+        selected = cassan.select_packages(manifest, ("apps", "cava", "fastfetch"))
         self.assertEqual(
             selected,
             [
                 package
                 for package in manifest
                 if package in cassan.CORE_PACKAGE_NAMES
-                or package in ("cava", "fastfetch")
+                or package in (
+                    "cava",
+                    "discord",
+                    "fastfetch",
+                    "firefox",
+                    "spotify-launcher",
+                )
             ],
         )
         # The manifest order is authoritative, so Fastfetch remains first.

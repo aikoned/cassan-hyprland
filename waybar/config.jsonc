@@ -80,13 +80,15 @@
   "cpu": {
     "interval": 2,
     "format": "CPU:{usage}%",
-    "tooltip": false
+    "tooltip-format": "CPU usage: {usage}%\nClick to open task manager",
+    "on-click": "kitty --class cassan-btop btop"
   },
 
   "memory": {
     "interval": 5,
     "format": "RAM:{percentage}%",
-    "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB"
+    "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB\nClick to open task manager",
+    "on-click": "kitty --class cassan-btop btop"
   },
 
   "clock": {
@@ -98,14 +100,17 @@
 
   "network": {
     "interval": 2,
-    "format-wifi": " {signalStrength}%",
+    "format-wifi": " {essid}",
     "format-ethernet": "󰌀",
     "format-linked": "󰌀",
     "format-disconnected": "󰝪",
     "format-disabled": "󰝪",
-    "tooltip-format-wifi": "{essid}\n{ipaddr}/{cidr}",
+    "max-length": 18,
+    "tooltip-format-wifi": "{essid}\nSignal: {signalStrength}%\n{ipaddr}/{cidr}\nClick to manage connections",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
-    "tooltip-format-disconnected": "Network disconnected"
+    "tooltip-format-disconnected": "Network disconnected",
+    "on-click": "networkmanager_dmenu",
+    "on-click-right": "nm-connection-editor"
   },
 
   "bluetooth": {
@@ -115,9 +120,10 @@
     "format-on": "",
     "format-connected": " {num_connections}",
     "format-no-controller": "",
-    "tooltip-format": "{controller_alias}",
-    "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}",
-    "tooltip-format-enumerate-connected": "{device_alias}"
+    "tooltip-format": "{controller_alias}\nClick to manage devices",
+    "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}\nClick to manage devices",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "on-click": "blueman-manager"
   },
 
   "pulseaudio": {
@@ -136,7 +142,9 @@
       ]
     },
     "scroll-step": 5,
-    "tooltip-format": "{desc}\nVolume: {volume}%"
+    "tooltip-format": "{desc}\nVolume: {volume}%\nClick to mute · Right-click for mixer",
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-click-right": "pavucontrol"
   },
 
   "backlight": {
@@ -146,7 +154,9 @@
       "󰃝"
     ],
     "scroll-step": 5,
-    "tooltip": false
+    "tooltip-format": "Brightness: {percent}%\nClick/right-click or scroll to adjust",
+    "on-click": "brightnessctl -e4 -n2 set 5%+",
+    "on-click-right": "brightnessctl -e4 -n2 set 5%-"
   },
 
   "battery": {

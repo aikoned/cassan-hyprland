@@ -17,18 +17,29 @@ from validate_toml import load as load_toml
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 WAYBAR_CONFIG = REPO_DIR / "waybar" / "config.jsonc"
+GTK_THEME_PATHS = (
+    REPO_DIR / "waybar" / "theme.css",
+    REPO_DIR / "wofi" / "theme.css",
+    REPO_DIR / "swaync" / "theme.css",
+)
 HYPR_ENTRYPOINT = REPO_DIR / "hypr" / "hyprland.lua"
 HYPR_STARTUP = REPO_DIR / "hypr" / "startup.lua"
+HYPR_BINDINGS = REPO_DIR / "hypr" / "bind.lua"
 HYPRLOCK_CONFIG = REPO_DIR / "hypr" / "hyprlock.conf"
 HYPRIDLE_CONFIG = REPO_DIR / "hypr" / "hypridle.conf"
 KITTY_CONFIG = REPO_DIR / "kitty" / "kitty.conf"
 WOFI_CONFIG = REPO_DIR / "wofi" / "config"
+WOFI_STYLE = REPO_DIR / "wofi" / "style.css"
+NETWORKMANAGER_DMENU_CONFIG = REPO_DIR / "networkmanager-dmenu" / "config.ini"
 SWAYNC_CONFIG = REPO_DIR / "swaync" / "config.json"
 YAZI_CONFIG = REPO_DIR / "yazi" / "yazi.toml"
 YAZI_THEME = REPO_DIR / "yazi" / "theme.toml"
 FASTFETCH_CONFIG = REPO_DIR / "fastfetch" / "config.jsonc"
 CAVA_CONFIG = REPO_DIR / "cava" / "config"
 CAVA_THEME = REPO_DIR / "cava" / "themes" / "nighthowler"
+SWAYNC_STYLE = REPO_DIR / "swaync" / "style.css"
+BTOP_CONFIG = REPO_DIR / "btop" / "btop.conf"
+BTOP_THEME = REPO_DIR / "btop" / "themes" / "nighthowler.theme"
 
 EXPECTED_WAYBAR_CLUSTERS = {
     "modules-left": ["custom/cassan", "hyprland/workspaces", "mpris"],
@@ -65,7 +76,8 @@ EXPECTED_WOFI_SETTINGS = {
     "lines": "7",
     "columns": "1",
     "location": "center",
-    "layer": "overlay",
+    "normal_window": "true",
+    "layer": "top",
     "orientation": "vertical",
     "halign": "fill",
     "content_halign": "fill",
@@ -354,6 +366,37 @@ def validate_waybar() -> None:
                 f"waybar/config.jsonc {key} must be {expected!r}; found {actual!r}"
             )
 
+    expected_actions = {
+        "cpu": {"on-click": "kitty --class cassan-btop btop"},
+        "memory": {"on-click": "kitty --class cassan-btop btop"},
+        "network": {
+            "on-click": "networkmanager_dmenu",
+            "on-click-right": "nm-connection-editor",
+        },
+        "bluetooth": {"on-click": "blueman-manager"},
+        "pulseaudio": {
+            "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+            "on-click-right": "pavucontrol",
+        },
+        "backlight": {
+            "on-click": "brightnessctl -e4 -n2 set 5%+",
+            "on-click-right": "brightnessctl -e4 -n2 set 5%-",
+        },
+    }
+    if config.get("network", {}).get("format-wifi") != " {essid}":
+        raise ValidationError(
+            "waybar network module must show the connected Wi-Fi name"
+        )
+    for module, actions in expected_actions.items():
+        settings = config.get(module)
+        if not isinstance(settings, dict):
+            raise ValidationError(f"waybar/config.jsonc must configure {module}")
+        for action, expected in actions.items():
+            if settings.get(action) != expected:
+                raise ValidationError(
+                    f"waybar {module}.{action} must remain functional"
+                )
+
 
 def read_text(path: Path) -> str:
     try:
@@ -528,6 +571,67 @@ def validate_wofi() -> None:
             details.append(f"changed {changed}")
         raise ValidationError("wofi/config violates its portable launcher contract: " + "; ".join(details))
 
+    style = read_text(WOFI_STYLE)
+    opaque_outer_box = re.compile(
+        r"#outer-box\s*\{[^}]*background-color:\s*@cassan-panel;", re.DOTALL
+    )
+    if not opaque_outer_box.search(style):
+        raise ValidationError(
+            "wofi/style.css must keep the launcher panel opaque over the wallpaper"
+        )
+
+    rules = read_text(REPO_DIR / "hypr" / "rules.lua")
+    for contract in (
+        'match = { class = "wofi" }',
+        'opacity = "1.0 override 1.0 override"',
+    ):
+        if contract not in rules:
+            raise ValidationError(
+                "hypr/rules.lua must float the opaque normal Wofi window"
+            )
+
+
+def validate_networkmanager_dmenu() -> None:
+    source = read_text(NETWORKMANAGER_DMENU_CONFIG)
+    reject_machine_paths(source, "networkmanager-dmenu/config.ini")
+    parser = configparser.ConfigParser(interpolation=None)
+    try:
+        parser.read_string(source)
+    except configparser.Error as exc:
+        raise ValidationError(
+            f"networkmanager-dmenu/config.ini is invalid INI: {exc}"
+        ) from exc
+
+    expected = {
+        "dmenu": {
+            "dmenu_command": "wofi --show dmenu --allow-images",
+            "compact": "True",
+            "list_saved": "True",
+            "highlight": "True",
+            "prompt": "Networks",
+        },
+        "editor": {
+            "gui_if_available": "True",
+            "gui": "nm-connection-editor",
+            "terminal": "kitty",
+        },
+        "nmdm": {
+            "rescan_delay": "5",
+            "show_notifications": "True",
+            "notification_timeout": "5",
+        },
+    }
+    if set(parser.sections()) != set(expected):
+        raise ValidationError(
+            "networkmanager-dmenu/config.ini must define dmenu, editor, and nmdm"
+        )
+    for section, settings in expected.items():
+        for key, value in settings.items():
+            if parser.get(section, key, fallback=None) != value:
+                raise ValidationError(
+                    f"networkmanager-dmenu {section}.{key} must be {value!r}"
+                )
+
 
 def nested_keys(value: Any):
     if isinstance(value, dict):
@@ -665,6 +769,13 @@ def validate_swaync() -> None:
     if backlight.get("cmd_setter") != "brightnessctl set $value%":
         raise ValidationError("SwayNC brightness setter must use brightnessctl")
 
+    style = read_text(SWAYNC_STYLE)
+    for active_selector in ("button.toggle:checked", "button.toggle.active"):
+        if active_selector not in style:
+            raise ValidationError(
+                "SwayNC must visually distinguish active toggles across supported versions"
+            )
+
 
 def validate_yazi() -> None:
     source = read_text(YAZI_CONFIG)
@@ -765,6 +876,41 @@ def validate_cava() -> None:
 
     theme_source = read_text(CAVA_THEME)
     reject_machine_paths(theme_source, "cava/themes/nighthowler")
+
+
+def validate_btop() -> None:
+    config = read_text(BTOP_CONFIG)
+    reject_machine_paths(config, "btop/btop.conf")
+    required_config = {
+        'color_theme = "nighthowler"',
+        "theme_background = true",
+        "truecolor = true",
+        "vim_keys = true",
+        'shown_boxes = "cpu mem net proc"',
+        "save_config_on_exit = false",
+    }
+    missing_config = sorted(required_config - set(config.splitlines()))
+    if missing_config:
+        raise ValidationError(
+            "btop/btop.conf is missing Cassan task-manager defaults: "
+            + ", ".join(missing_config)
+        )
+
+    theme = read_text(BTOP_THEME)
+    reject_machine_paths(theme, "btop/themes/nighthowler.theme")
+    required_theme_keys = {
+        "main_bg",
+        "main_fg",
+        "selected_bg",
+        "selected_fg",
+        "cpu_box",
+        "mem_box",
+        "net_box",
+        "proc_box",
+    }
+    found_theme_keys = set(re.findall(r"^theme\[([a-z_]+)\]=\"#[0-9A-Fa-f]{6}\"$", theme, re.MULTILINE))
+    if not required_theme_keys <= found_theme_keys:
+        raise ValidationError("btop Nighthowler theme is incomplete")
     theme = load_ini(CAVA_THEME)
     if set(theme) != {"color"}:
         raise ValidationError("Cava's Nighthowler theme must contain only its color section")
@@ -944,8 +1090,13 @@ def validate_hypridle() -> None:
         invocation = f'hl.exec_cmd("{command}")'
         if startup.count(invocation) != 1:
             raise ValidationError(f"hypr/startup.lua must launch {command} exactly once")
-    if "hypridle.service" in startup or "systemctl --user" in startup:
+    if "hypridle.service" in startup:
         raise ValidationError("Cassan must not launch Hypridle both directly and as a service")
+    polkit = 'hl.exec_cmd("systemctl --user start hyprpolkitagent")'
+    if startup.count(polkit) != 1:
+        raise ValidationError(
+            "hypr/startup.lua must start the graphical authentication agent once"
+        )
 
 
 def validate_style_import(path: Path) -> None:
@@ -955,6 +1106,26 @@ def validate_style_import(path: Path) -> None:
         raise ValidationError(
             f"{path.relative_to(REPO_DIR)} must import its generated theme first"
         )
+
+
+def validate_gtk_themes() -> None:
+    """Keep generated colors within GTK CSS's supported color syntax."""
+    eight_digit_hex = re.compile(r"#[0-9A-Fa-f]{8}(?![0-9A-Fa-f])")
+    expected_transparent = (
+        "@define-color cassan-color-transparent rgba(0, 0, 0, 0);"
+    )
+
+    for path in GTK_THEME_PATHS:
+        source = read_text(path)
+        if eight_digit_hex.search(source):
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)} contains GTK-incompatible "
+                "eight-digit hex color syntax"
+            )
+        if expected_transparent not in source.splitlines():
+            raise ValidationError(
+                f"{path.relative_to(REPO_DIR)} must render transparency as rgba()"
+            )
 
 
 def lua_requires(source: str) -> list[str]:
@@ -994,6 +1165,20 @@ def validate_hypr() -> list[Path]:
     if not theme_path.is_file():
         raise ValidationError("required generated theme is missing: hypr/theme.lua")
     lua_files.append(theme_path)
+
+    bindings = read_text(HYPR_BINDINGS)
+    for command in (
+        '"firefox"',
+        '"discord"',
+        '"spotify-launcher"',
+        '"kitty --class cassan-btop btop"',
+        '"kitty --class cassan-fastfetch fastfetch"',
+        '"kitty --class cassan-cava cava"',
+    ):
+        if bindings.count(command) != 1:
+            raise ValidationError(
+                f"hypr/bind.lua must define the optional app command {command} once"
+            )
     return lua_files
 
 
@@ -1024,12 +1209,15 @@ def main() -> int:
         lua_files = validate_hypr()
         validate_kitty()
         validate_wofi()
+        validate_networkmanager_dmenu()
         validate_swaync()
         validate_yazi()
         validate_fastfetch()
         validate_cava()
+        validate_btop()
         validate_hyprlock()
         validate_hypridle()
+        validate_gtk_themes()
         validate_style_import(REPO_DIR / "wofi" / "style.css")
         validate_style_import(REPO_DIR / "swaync" / "style.css")
         compile_lua(lua_files)

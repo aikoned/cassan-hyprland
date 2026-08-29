@@ -23,7 +23,7 @@
 @define-color cassan-color-surface #151B1D;
 @define-color cassan-color-surface-alt #211A2C;
 @define-color cassan-color-teal #6FA3A0;
-@define-color cassan-color-transparent #00000000;
+@define-color cassan-color-transparent rgba(0, 0, 0, 0);
 
 @define-color cassan-background #0B1715;
 @define-color cassan-focus #A173C9;

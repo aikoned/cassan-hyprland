@@ -11,11 +11,13 @@ hyprpaper
 hyprlock
 hypridle
 xdg-desktop-portal-hyprland
+hyprpolkitagent
 
 # Cassan deployment and validation
 git
 python
 lua
+less
 
 # Terminal surfaces
 yazi
@@ -36,6 +38,10 @@ swappy
 brightnessctl
 playerctl
 zsh
+networkmanager-dmenu
+nm-connection-editor
+pavucontrol
+libnotify
 
 # Desktop services
 networkmanager
@@ -45,6 +51,11 @@ wireplumber
 bluez
 bluez-utils
 blueman
+
+# Everyday applications
+firefox
+discord
+spotify-launcher
 
 # Fonts and broad glyph coverage
 ttf-iosevka-nerd
