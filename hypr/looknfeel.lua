@@ -41,7 +41,7 @@ hl.config({
   },
 
   animations = { enabled = true },
-  dwindle = { pseudotile = true, preserve_split = true },
+  dwindle = { preserve_split = true },
   master = { new_status = "master" },
   misc = {
     force_default_wallpaper = -1,

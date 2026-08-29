@@ -379,6 +379,16 @@ if rg -n '\bswww(-daemon)?\b' "$repo_dir" \
   exit 1
 fi
 
+if rg -n '\bpseudotile[[:space:]]*=' "$repo_dir/hypr" -g '*.lua'; then
+  printf 'obsolete dwindle.pseudotile config key found; use the window.pseudo dispatcher\n' >&2
+  exit 1
+fi
+
+rg -Fq 'hl.bind(mod .. " + P", hl.dsp.window.pseudo())' "$repo_dir/hypr/bind.lua" || {
+  printf 'the Super+P pseudotile dispatcher binding is missing\n' >&2
+  exit 1
+}
+
 if rg -n '\.spicetify' "$repo_dir/.zshrc"; then
   printf 'the shell PATH must not prefer the retired Cassan Spicetify binary\n' >&2
   exit 1
