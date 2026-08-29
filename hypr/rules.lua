@@ -17,3 +17,13 @@ hl.window_rule({
   center = true,
   opacity = "1.0 override 1.0 override",
 })
+
+-- Resource monitors need substantially more room than a half-width terminal.
+-- Keep them useful even if a second instance is launched accidentally.
+hl.window_rule({
+  name = "float-cassan-task-manager",
+  match = { class = "cassan-btop" },
+  float = true,
+  center = true,
+  size = { "(monitor_w*0.82)", "(monitor_h*0.80)" },
+})

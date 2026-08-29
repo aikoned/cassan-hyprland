@@ -48,29 +48,29 @@
           "label": "󰤨",
           "type": "toggle",
           "active": true,
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then nmcli radio wifi on; else nmcli radio wifi off; fi'",
-          "update-command": "sh -c 'if [ \"$(LC_ALL=C nmcli radio wifi)\" = enabled ]; then echo true; else echo false; fi'"
+          "command": "if [ x$SWAYNC_TOGGLE_STATE = xtrue ]; then /usr/bin/nmcli radio wifi on; else /usr/bin/nmcli radio wifi off; fi",
+          "update-command": "if LC_ALL=C /usr/bin/nmcli radio wifi | /usr/bin/grep -qx enabled; then /usr/bin/printf true; else /usr/bin/printf false; fi; /usr/bin/sleep 0.05"
         },
         {
           "label": "",
           "type": "toggle",
           "active": false,
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then bluetoothctl power on; else bluetoothctl power off; fi'",
-          "update-command": "sh -c 'if LC_ALL=C bluetoothctl show | grep -q \"Powered: yes\"; then echo true; else echo false; fi'"
+          "command": "if [ x$SWAYNC_TOGGLE_STATE = xtrue ]; then /usr/bin/bluetoothctl power on; else /usr/bin/bluetoothctl power off; fi",
+          "update-command": "if LC_ALL=C /usr/bin/bluetoothctl show | /usr/bin/grep -q 'Powered: yes'; then /usr/bin/printf true; else /usr/bin/printf false; fi; /usr/bin/sleep 0.05"
         },
         {
           "label": "󰍬",
           "type": "toggle",
           "active": true,
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0; else wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1; fi'",
-          "update-command": "sh -c 'if LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q \"\\[MUTED\\]\"; then echo false; else echo true; fi'"
+          "command": "if [ x$SWAYNC_TOGGLE_STATE = xtrue ]; then /usr/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0; else /usr/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1; fi",
+          "update-command": "if LC_ALL=C /usr/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | /usr/bin/grep -q MUTED; then /usr/bin/printf false; else /usr/bin/printf true; fi; /usr/bin/sleep 0.05"
         },
         {
           "label": "󰕾",
           "type": "toggle",
           "active": true,
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = true ]; then wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; else wpctl set-mute @DEFAULT_AUDIO_SINK@ 1; fi'",
-          "update-command": "sh -c 'if LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q \"\\[MUTED\\]\"; then echo false; else echo true; fi'"
+          "command": "if [ x$SWAYNC_TOGGLE_STATE = xtrue ]; then /usr/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; else /usr/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ 1; fi",
+          "update-command": "if LC_ALL=C /usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | /usr/bin/grep -q MUTED; then /usr/bin/printf false; else /usr/bin/printf true; fi; /usr/bin/sleep 0.05"
         }
       ]
     },

@@ -2,9 +2,6 @@
   "layer": "top",
   "position": "top",
   "height": 34,
-  "margin-top": 10,
-  "margin-right": 10,
-  "margin-left": 10,
   "spacing": 0,
   "fixed-center": true,
   "exclusive": true,
@@ -21,13 +18,8 @@
   "modules-right": [
     "cpu",
     "memory",
-    "clock",
-    "network",
-    "bluetooth",
     "pulseaudio",
-    "backlight",
     "battery",
-    "tray",
     "custom/notification"
   ],
 
@@ -91,41 +83,6 @@
     "on-click": "kitty --class cassan-btop btop"
   },
 
-  "clock": {
-    "interval": 60,
-    "format": " {:%H:%M}",
-    "format-alt": " {:%a %d %b}",
-    "tooltip-format": "{:%A, %B %d, %Y}"
-  },
-
-  "network": {
-    "interval": 2,
-    "format-wifi": " {essid}",
-    "format-ethernet": "󰌀",
-    "format-linked": "󰌀",
-    "format-disconnected": "󰝪",
-    "format-disabled": "󰝪",
-    "max-length": 18,
-    "tooltip-format-wifi": "{essid}\nSignal: {signalStrength}%\n{ipaddr}/{cidr}\nClick to manage connections",
-    "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
-    "tooltip-format-disconnected": "Network disconnected",
-    "on-click": "networkmanager_dmenu",
-    "on-click-right": "nm-connection-editor"
-  },
-
-  "bluetooth": {
-    "format": "",
-    "format-disabled": "󰊲",
-    "format-off": "󰊲",
-    "format-on": "",
-    "format-connected": " {num_connections}",
-    "format-no-controller": "",
-    "tooltip-format": "{controller_alias}\nClick to manage devices",
-    "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}\nClick to manage devices",
-    "tooltip-format-enumerate-connected": "{device_alias}",
-    "on-click": "blueman-manager"
-  },
-
   "pulseaudio": {
     "format": "{icon} {volume}%",
     "format-muted": "󰙟",
@@ -145,18 +102,6 @@
     "tooltip-format": "{desc}\nVolume: {volume}%\nClick to mute · Right-click for mixer",
     "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-click-right": "pavucontrol"
-  },
-
-  "backlight": {
-    "format": "{icon} {percent}%",
-    "format-icons": [
-      "󰃞",
-      "󰃝"
-    ],
-    "scroll-step": 5,
-    "tooltip-format": "Brightness: {percent}%\nClick/right-click or scroll to adjust",
-    "on-click": "brightnessctl -e4 -n2 set 5%+",
-    "on-click-right": "brightnessctl -e4 -n2 set 5%-"
   },
 
   "battery": {
@@ -182,11 +127,6 @@
       "󰁹"
     ],
     "tooltip-format": "{time}\n{capacity}%"
-  },
-
-  "tray": {
-    "icon-size": 15,
-    "spacing": 8
   },
 
   "custom/notification": {

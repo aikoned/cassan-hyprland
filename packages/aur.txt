@@ -1,7 +1,12 @@
 # Optional AUR packages belong here only after source and maintenance review.
 # Keep the core desktop independent of this file.
 
-# Candidates to evaluate later:
-# vesktop-bin
+# Reviewed optional applications
+vesktop
+
+# Compatibility hold: spicetify-cli 2.43.2 trails upstream 2.44.0, whose
+# wrapper changes can break source packages. Use a future pinned release flow.
 # spicetify-cli
+
+# Candidates to evaluate later:
 # wlogout

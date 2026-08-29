@@ -24,7 +24,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from urllib.parse import urlsplit
 
 
 SCHEMA = 1
@@ -33,11 +34,16 @@ STATE_DIRECTORY = "cassan"
 BACKUP_ID_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9@._+:-]*$")
+AUR_PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9@._+-]*$")
 MUTATING_ACTIONS = frozenset(("create", "update", "replace", "remove"))
 STATE_ACTIONS = frozenset(("adopt", "forget", "reconcile"))
 TRANSACTIONAL_ACTIONS = MUTATING_ACTIONS | STATE_ACTIONS
 PACMAN_PATH = Path("/usr/bin/pacman")
 SUDO_PATH = Path("/usr/bin/sudo")
+GIT_PATH = Path("/usr/bin/git")
+MAKEPKG_PATH = Path("/usr/bin/makepkg")
+LESS_PATH = Path("/usr/bin/less")
+AUR_ORIGIN = "https://aur.archlinux.org"
 
 
 class CassanError(Exception):
@@ -194,7 +200,7 @@ CORE_PACKAGE_NAMES = frozenset(
     )
 )
 OPTIONAL_PACKAGE_GROUPS = {
-    "apps": frozenset(("firefox", "discord", "spotify-launcher")),
+    "apps": frozenset(("firefox", "spotify-launcher", "xdg-utils")),
     "cava": frozenset(("cava",)),
     "fastfetch": frozenset(("fastfetch",)),
 }
@@ -2256,6 +2262,61 @@ def load_official_packages(repo: Path = REPO_DIR) -> List[str]:
     return packages
 
 
+def validate_aur_repository_url(package: str, url: str) -> str:
+    """Return one exact AUR clone URL or reject unsafe repository input."""
+
+    if not isinstance(package, str) or not AUR_PACKAGE_RE.fullmatch(package):
+        raise PreflightError("unsafe AUR package token: %r" % package)
+    expected = "%s/%s.git" % (AUR_ORIGIN, package)
+    if not isinstance(url, str) or url != expected:
+        raise PreflightError("unsafe AUR repository URL for %s" % package)
+    try:
+        parsed = urlsplit(url)
+    except ValueError as error:
+        raise PreflightError("invalid AUR repository URL for %s" % package) from error
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "aur.archlinux.org"
+        or parsed.path != "/%s.git" % package
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise PreflightError("unsafe AUR repository URL for %s" % package)
+    return url
+
+
+def aur_repository_url(package: str) -> str:
+    return validate_aur_repository_url(
+        package, "%s/%s.git" % (AUR_ORIGIN, package)
+    )
+
+
+def load_aur_packages(repo: Path = REPO_DIR) -> List[str]:
+    path = repo / "packages" / "aur.txt"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise PreflightError("cannot read AUR package manifest: %s" % error) from error
+    packages = []
+    seen = set()
+    for line_number, source_line in enumerate(lines, 1):
+        value = source_line.strip()
+        if not value or value.startswith("#"):
+            continue
+        if not AUR_PACKAGE_RE.fullmatch(value):
+            raise PreflightError(
+                "invalid AUR package token at packages/aur.txt:%d" % line_number
+            )
+        aur_repository_url(value)
+        if value in seen:
+            raise PreflightError("duplicate AUR package: %s" % value)
+        seen.add(value)
+        packages.append(value)
+    if not packages:
+        raise PreflightError("AUR package manifest is empty")
+    return packages
+
+
 def select_packages(
     manifest_packages: Sequence[str], optional_groups: Sequence[str]
 ) -> List[str]:
@@ -2331,6 +2392,168 @@ def install_packages(packages: Sequence[str], euid: Optional[int] = None) -> Non
         raise PackageError("pacman failed with exit status %d" % result.returncode)
 
 
+def verified_pkgbuild(repository: Path, package: str) -> Path:
+    pkgbuild = repository / "PKGBUILD"
+    try:
+        pkgbuild_stat = os.lstat(str(pkgbuild))
+    except OSError as error:
+        raise PackageError("%s clone does not contain a readable PKGBUILD" % package) from error
+    if not stat.S_ISREG(pkgbuild_stat.st_mode):
+        raise PackageError("%s PKGBUILD is not a regular file" % package)
+    return pkgbuild
+
+
+def display_pkgbuild(package: str, pkgbuild: Path, pager: Optional[str]) -> None:
+    print("\nReview PKGBUILD for %s:" % package)
+    print("--- %s PKGBUILD ---" % package)
+    if pager is None:
+        try:
+            source = pkgbuild.read_text(encoding="utf-8", errors="replace")
+        except OSError as error:
+            raise PackageError("cannot display %s PKGBUILD" % package) from error
+        sys.stdout.write(source)
+        if not source.endswith("\n"):
+            sys.stdout.write("\n")
+        sys.stdout.flush()
+    else:
+        pager_environment = {
+            "PATH": "/usr/bin",
+            "LESSSECURE": "1",
+            "LESSHISTFILE": "-",
+        }
+        for name in ("LANG", "LC_ALL", "LC_CTYPE", "TERM"):
+            if name in os.environ:
+                pager_environment[name] = os.environ[name]
+        result = subprocess.run(
+            [pager, "--", str(pkgbuild)],
+            env=pager_environment,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise PackageError(
+                "pager failed while displaying %s PKGBUILD" % package
+            )
+    print("--- end %s PKGBUILD ---" % package)
+
+
+def install_aur_packages(
+    packages: Sequence[str],
+    euid: Optional[int] = None,
+    confirmation_reader: Optional[Callable[[str], str]] = None,
+) -> None:
+    """Review and build exact AUR packages without delegating trust to a helper."""
+
+    package_list = list(packages)
+    if not package_list:
+        raise PreflightError("AUR package selection is empty")
+    if len(set(package_list)) != len(package_list):
+        raise PreflightError("AUR package selection contains duplicates")
+    sources = [
+        (package, aur_repository_url(package)) for package in package_list
+    ]
+
+    current_euid = os.geteuid() if euid is None else euid
+    if current_euid == 0:
+        raise PreflightError("run AUR package installation as a regular user, not root")
+    if not is_arch_linux():
+        raise PreflightError("AUR package installation is supported only on Arch Linux")
+
+    pacman = verified_system_executable(PACMAN_PATH, "pacman")
+    sudo = verified_system_executable(SUDO_PATH, "sudo")
+    prerequisites = subprocess.run(
+        [sudo, pacman, "-Syu", "--needed", "--", "base-devel"],
+        check=False,
+    )
+    if prerequisites.returncode != 0:
+        raise PackageError(
+            "pacman failed to install base-devel with exit status %d"
+            % prerequisites.returncode
+        )
+
+    git = verified_system_executable(GIT_PATH, "git")
+    makepkg = verified_system_executable(MAKEPKG_PATH, "makepkg")
+    pager = None
+    if os.path.lexists(str(LESS_PATH)):
+        pager = verified_system_executable(LESS_PATH, "pager")
+    reader = input if confirmation_reader is None else confirmation_reader
+    git_environment = {
+        "PATH": "/usr/bin",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    for name in (
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "HTTPS_PROXY",
+        "https_proxy",
+        "NO_PROXY",
+        "no_proxy",
+    ):
+        if name in os.environ:
+            git_environment[name] = os.environ[name]
+
+    for package, repository_url in sources:
+        with tempfile.TemporaryDirectory(prefix="cassan-aur-%s-" % package) as temporary:
+            repository = Path(temporary) / "source"
+            clone = subprocess.run(
+                [
+                    git,
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--single-branch",
+                    "--",
+                    repository_url,
+                    str(repository),
+                ],
+                env=git_environment,
+                check=False,
+            )
+            if clone.returncode != 0:
+                raise PackageError(
+                    "git clone failed for %s with exit status %d"
+                    % (package, clone.returncode)
+                )
+
+            pkgbuild = verified_pkgbuild(repository, package)
+            try:
+                reviewed_sha256 = file_sha256(pkgbuild)
+            except OSError as error:
+                raise PackageError("cannot hash %s PKGBUILD" % package) from error
+            display_pkgbuild(package, pkgbuild, pager)
+            try:
+                answer = reader(
+                    "Type %s to build and install this reviewed package: " % package
+                )
+            except (EOFError, KeyboardInterrupt) as error:
+                raise PackageError("AUR confirmation was cancelled for %s" % package) from error
+            if answer != package:
+                raise PackageError(
+                    "AUR confirmation did not match %s; no build was run" % package
+                )
+            try:
+                current_sha256 = file_sha256(pkgbuild)
+            except OSError as error:
+                raise PackageError("cannot recheck %s PKGBUILD" % package) from error
+            if current_sha256 != reviewed_sha256:
+                raise PackageError(
+                    "%s PKGBUILD changed after review; refusing to build" % package
+                )
+
+            build = subprocess.run(
+                [makepkg, "--syncdeps", "--install", "--needed"],
+                cwd=str(repository),
+                check=False,
+            )
+            if build.returncode != 0:
+                raise PackageError(
+                    "makepkg failed for %s with exit status %d"
+                    % (package, build.returncode)
+                )
+
+
 def parser() -> argparse.ArgumentParser:
     description = (
         "Deploy Cassan's reviewed runtime configuration with per-file backups. "
@@ -2397,6 +2620,15 @@ def parser() -> argparse.ArgumentParser:
         ),
     )
 
+    aur_packages_parser = subparsers.add_parser(
+        "aur-packages", help="report or explicitly review and install AUR packages"
+    )
+    aur_packages_parser.add_argument(
+        "--install",
+        action="store_true",
+        help="review each PKGBUILD and build it with makepkg",
+    )
+
     recover_parser = subparsers.add_parser(
         "recover",
         help="inspect or roll back an interrupted transaction after its process exited",
@@ -2425,6 +2657,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         print("  %s" % package)
                 else:
                     print("All Cassan official packages are installed.")
+            return 0
+
+        if arguments.command == "aur-packages":
+            packages = load_aur_packages()
+            if arguments.install:
+                install_aur_packages(packages)
+                print("Cassan AUR packages are installed.")
+            else:
+                missing = inspect_packages(packages)
+                if missing:
+                    print("Missing AUR packages:")
+                    for package in missing:
+                        print("  %s" % package)
+                else:
+                    print("All Cassan AUR packages are installed.")
             return 0
 
         deployer = Deployer()

@@ -76,7 +76,7 @@ rounding_px = 4
 gap_inner_px = 5
 gap_outer_px = 10
 bar_height_px = 34
-bar_margin_px = 10
+bar_margin_px = 0
 panel_padding_px = 14
 shadow_blur_px = 14
 shadow_opacity = 0.28
@@ -104,5 +104,5 @@ protect_eye = true
 [layout]
 desktop_aspect_ratio = "16:9"
 default_composition = "showcase"
-bar_islands = 3
+bar_islands = 1
 subject_safe_area = "center"

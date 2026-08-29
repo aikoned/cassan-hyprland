@@ -158,7 +158,6 @@ def validate_palette() -> None:
         "gap_inner_px",
         "gap_outer_px",
         "bar_height_px",
-        "bar_margin_px",
         "panel_padding_px",
         "shadow_blur_px",
     }
@@ -169,6 +168,11 @@ def validate_palette() -> None:
     }
     if invalid_geometry:
         raise ValueError(f"invalid positive geometry values: {invalid_geometry}")
+    if (
+        not isinstance(geometry.get("bar_margin_px"), int)
+        or geometry["bar_margin_px"] < 0
+    ):
+        raise ValueError("bar_margin_px must be a non-negative integer")
     if not isinstance(geometry.get("rounding_px"), int) or geometry["rounding_px"] < 0:
         raise ValueError("rounding_px must be a non-negative integer")
     if geometry.get("blur_enabled") is not False:
@@ -210,8 +214,8 @@ def validate_palette() -> None:
     if wallpaper.get("fit") != "cover" or wallpaper.get("position") != "center":
         raise ValueError("wallpaper must use centered cover placement")
 
-    if layout.get("bar_islands") != 3:
-        raise ValueError("Nighthowler must define three bar islands")
+    if layout.get("bar_islands") != 1:
+        raise ValueError("Nighthowler must define one continuous bar")
     if layout.get("subject_safe_area") != "center":
         raise ValueError("Nighthowler must preserve a center subject safe area")
 

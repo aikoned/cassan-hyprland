@@ -10,17 +10,16 @@
 }
 
 window#waybar {
-  background: transparent;
+  background: @cassan-panel;
   color: @cassan-text;
+  border-bottom: 2px solid @cassan-focus-inactive;
 }
 
 .modules-left,
 .modules-center,
 .modules-right {
-  min-height: 30px;
-  background: @cassan-panel;
-  border: 2px solid @cassan-focus-inactive;
-  border-radius: 4px;
+  min-height: 32px;
+  background: transparent;
 }
 
 tooltip {
@@ -43,11 +42,9 @@ tooltip label {
 
 #custom-cassan:hover,
 #mpris:hover,
-#clock:hover,
-#network:hover,
-#bluetooth:hover,
+#cpu:hover,
+#memory:hover,
 #pulseaudio:hover,
-#backlight:hover,
 #battery:hover,
 #custom-notification:hover {
   background: @cassan-panel-alternate;
@@ -108,25 +105,15 @@ tooltip label {
 
 #cpu,
 #memory,
-#clock,
-#network,
-#bluetooth,
 #pulseaudio,
-#backlight,
 #battery,
-#tray,
 #custom-notification {
   padding: 0 7px;
 }
 
 #memory,
-#clock,
-#network,
-#bluetooth,
 #pulseaudio,
-#backlight,
 #battery,
-#tray,
 #custom-notification {
   border-left: 1px solid @cassan-panel-alternate;
 }
@@ -135,15 +122,10 @@ tooltip label {
   color: @cassan-warm-accent;
 }
 
-#memory,
-#clock {
+#memory {
   color: @cassan-text-secondary;
 }
 
-#network.disconnected,
-#network.disabled,
-#bluetooth.disabled,
-#bluetooth.off,
 #pulseaudio.muted {
   color: @cassan-text-muted;
 }
@@ -171,14 +153,5 @@ tooltip label {
 #custom-notification.dnd-notification,
 #custom-notification.inhibited-notification,
 #custom-notification.dnd-inhibited-notification {
-  color: @cassan-urgent;
-}
-
-#tray > .passive {
-  -gtk-icon-effect: dim;
-}
-
-#tray > .needs-attention {
-  -gtk-icon-effect: highlight;
   color: @cassan-urgent;
 }

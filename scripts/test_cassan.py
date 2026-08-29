@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -698,6 +700,270 @@ class CassanDeploymentTests(unittest.TestCase):
         with self.assertRaises(cassan.PreflightError):
             cassan.load_official_packages(self.repo)
 
+    def test_reviewed_aur_manifest_and_official_app_group_are_exact(self) -> None:
+        self.assertEqual(
+            cassan.load_aur_packages(cassan.REPO_DIR),
+            ["vesktop"],
+        )
+        self.assertEqual(
+            cassan.OPTIONAL_PACKAGE_GROUPS["apps"],
+            frozenset(("firefox", "spotify-launcher", "xdg-utils")),
+        )
+        official = cassan.load_official_packages(cassan.REPO_DIR)
+        self.assertNotIn("discord", official)
+        for package in cassan.OPTIONAL_PACKAGE_GROUPS["apps"]:
+            self.assertIn(package, official)
+
+    def test_aur_manifest_parser_rejects_invalid_and_duplicate_tokens(self) -> None:
+        packages = self.repo / "packages/aur.txt"
+        packages.parent.mkdir()
+        packages.write_text(
+            "# reviewed\nvesktop\n\nexample-app\n", encoding="utf-8"
+        )
+        self.assertEqual(
+            cassan.load_aur_packages(self.repo),
+            ["vesktop", "example-app"],
+        )
+
+        packages.write_text("vesktop\nvesktop\n", encoding="utf-8")
+        with self.assertRaises(cassan.PreflightError):
+            cassan.load_aur_packages(self.repo)
+
+        for invalid in ("../vesktop", "vesktop/name", "pkg:version", "-option"):
+            packages.write_text(invalid + "\n", encoding="utf-8")
+            with self.assertRaises(cassan.PreflightError):
+                cassan.load_aur_packages(self.repo)
+
+    def test_aur_repository_urls_are_exact_https_sources(self) -> None:
+        self.assertEqual(
+            cassan.aur_repository_url("vesktop"),
+            "https://aur.archlinux.org/vesktop.git",
+        )
+        for invalid in ("../vesktop", "vesktop/name", "-option", "name\nother"):
+            with self.assertRaises(cassan.PreflightError):
+                cassan.aur_repository_url(invalid)
+        for invalid_url in (
+            "http://aur.archlinux.org/vesktop.git",
+            "https://example.com/vesktop.git",
+            "https://aur.archlinux.org/spicetify-cli.git",
+            "https://aur.archlinux.org/vesktop.git?ref=main",
+            "https://user@aur.archlinux.org/vesktop.git",
+        ):
+            with self.assertRaises(cassan.PreflightError):
+                cassan.validate_aur_repository_url("vesktop", invalid_url)
+
+    def test_aur_install_reviews_isolated_clones_and_uses_fixed_argv(self) -> None:
+        packages = ["vesktop", "example-app"]
+        clone_destinations = []
+
+        def run(argv, **kwargs):
+            if len(argv) > 1 and argv[1] == "clone":
+                destination = Path(argv[-1])
+                clone_destinations.append(destination)
+                destination.mkdir()
+                (destination / "PKGBUILD").write_text(
+                    "pkgname=%s\n" % destination.parent.name,
+                    encoding="utf-8",
+                )
+            return mock.Mock(returncode=0)
+
+        confirmations = mock.Mock(side_effect=packages)
+        real_lexists = os.path.lexists
+        with mock.patch.object(cassan, "is_arch_linux", return_value=True), mock.patch.object(
+            cassan,
+            "verified_system_executable",
+            side_effect=lambda path, _label: str(path),
+        ) as verify, mock.patch.object(
+            cassan.os.path,
+            "lexists",
+            side_effect=lambda path: True
+            if path == str(cassan.LESS_PATH)
+            else real_lexists(path),
+        ), mock.patch.object(
+            cassan.subprocess, "run", side_effect=run
+        ) as subprocess_run, redirect_stdout(io.StringIO()):
+            cassan.install_aur_packages(
+                packages, euid=1000, confirmation_reader=confirmations
+            )
+
+        self.assertEqual(
+            verify.call_args_list,
+            [
+                mock.call(cassan.PACMAN_PATH, "pacman"),
+                mock.call(cassan.SUDO_PATH, "sudo"),
+                mock.call(cassan.GIT_PATH, "git"),
+                mock.call(cassan.MAKEPKG_PATH, "makepkg"),
+                mock.call(cassan.LESS_PATH, "pager"),
+            ],
+        )
+        calls = subprocess_run.call_args_list
+        self.assertEqual(
+            calls[0],
+            mock.call(
+                [
+                    "/usr/bin/sudo",
+                    "/usr/bin/pacman",
+                    "-Syu",
+                    "--needed",
+                    "--",
+                    "base-devel",
+                ],
+                check=False,
+            ),
+        )
+        clone_calls = [call for call in calls if len(call.args[0]) > 1 and call.args[0][1] == "clone"]
+        pager_calls = [call for call in calls if call.args[0][0] == "/usr/bin/less"]
+        build_calls = [call for call in calls if call.args[0][0] == "/usr/bin/makepkg"]
+        self.assertEqual(len(clone_calls), 2)
+        self.assertEqual(len(pager_calls), 2)
+        self.assertEqual(len(build_calls), 2)
+        self.assertEqual(len({path.parent for path in clone_destinations}), 2)
+        for package, clone_call, destination in zip(
+            packages, clone_calls, clone_destinations
+        ):
+            self.assertEqual(
+                clone_call.args[0],
+                [
+                    "/usr/bin/git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--single-branch",
+                    "--",
+                    "https://aur.archlinux.org/%s.git" % package,
+                    str(destination),
+                ],
+            )
+            self.assertEqual(clone_call.kwargs["env"]["GIT_CONFIG_NOSYSTEM"], "1")
+            self.assertEqual(
+                clone_call.kwargs["env"]["GIT_CONFIG_GLOBAL"], "/dev/null"
+            )
+            self.assertEqual(clone_call.kwargs["env"]["GIT_TERMINAL_PROMPT"], "0")
+            self.assertFalse(destination.parent.exists())
+        for pager_call in pager_calls:
+            self.assertEqual(pager_call.kwargs["env"]["LESSSECURE"], "1")
+            self.assertEqual(pager_call.kwargs["env"]["LESSHISTFILE"], "-")
+        for build_call, destination in zip(build_calls, clone_destinations):
+            self.assertEqual(
+                build_call,
+                mock.call(
+                    [
+                        "/usr/bin/makepkg",
+                        "--syncdeps",
+                        "--install",
+                        "--needed",
+                    ],
+                    cwd=str(destination),
+                    check=False,
+                ),
+            )
+        for call in calls:
+            self.assertNotIn("shell", call.kwargs)
+        self.assertEqual(confirmations.call_count, 2)
+        for package, call in zip(packages, confirmations.call_args_list):
+            self.assertIn("Type %s" % package, call.args[0])
+
+    def test_aur_install_requires_exact_confirmation_before_makepkg(self) -> None:
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append((argv, kwargs))
+            if len(argv) > 1 and argv[1] == "clone":
+                destination = Path(argv[-1])
+                destination.mkdir()
+                (destination / "PKGBUILD").write_text(
+                    "pkgname=vesktop\n", encoding="utf-8"
+                )
+            return mock.Mock(returncode=0)
+
+        output = io.StringIO()
+        with mock.patch.object(cassan, "is_arch_linux", return_value=True), mock.patch.object(
+            cassan,
+            "verified_system_executable",
+            side_effect=lambda path, _label: str(path),
+        ), mock.patch.object(
+            cassan.os.path, "lexists", return_value=False
+        ), mock.patch.object(
+            cassan.subprocess, "run", side_effect=run
+        ), redirect_stdout(output):
+            with self.assertRaises(cassan.PackageError):
+                cassan.install_aur_packages(
+                    ["vesktop"],
+                    euid=1000,
+                    confirmation_reader=lambda _prompt: "yes",
+                )
+
+        self.assertIn("pkgname=vesktop", output.getvalue())
+        self.assertFalse(any(argv[0] == "/usr/bin/makepkg" for argv, _ in calls))
+
+    def test_aur_install_rejects_pkgbuild_changed_after_review(self) -> None:
+        calls = []
+        pkgbuilds = []
+
+        def run(argv, **kwargs):
+            calls.append((argv, kwargs))
+            if len(argv) > 1 and argv[1] == "clone":
+                destination = Path(argv[-1])
+                destination.mkdir()
+                pkgbuild = destination / "PKGBUILD"
+                pkgbuild.write_text("pkgname=vesktop\n", encoding="utf-8")
+                pkgbuilds.append(pkgbuild)
+            return mock.Mock(returncode=0)
+
+        def change_after_review(_prompt):
+            pkgbuilds[0].write_text("pkgname=changed\n", encoding="utf-8")
+            return "vesktop"
+
+        with mock.patch.object(cassan, "is_arch_linux", return_value=True), mock.patch.object(
+            cassan,
+            "verified_system_executable",
+            side_effect=lambda path, _label: str(path),
+        ), mock.patch.object(
+            cassan.os.path, "lexists", return_value=False
+        ), mock.patch.object(
+            cassan.subprocess, "run", side_effect=run
+        ), redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(cassan.PackageError, "changed after review"):
+                cassan.install_aur_packages(
+                    ["vesktop"],
+                    euid=1000,
+                    confirmation_reader=change_after_review,
+                )
+
+        self.assertFalse(any(argv[0] == "/usr/bin/makepkg" for argv, _ in calls))
+
+    def test_aur_install_rejects_unsafe_root_and_non_arch_runs_early(self) -> None:
+        with mock.patch.object(cassan.subprocess, "run") as run:
+            with self.assertRaises(cassan.PreflightError):
+                cassan.install_aur_packages(["../unsafe"], euid=1000)
+            with self.assertRaises(cassan.PreflightError):
+                cassan.install_aur_packages(
+                    ["vesktop", "vesktop"], euid=1000
+                )
+            with self.assertRaises(cassan.PreflightError):
+                cassan.install_aur_packages(["vesktop"], euid=0)
+            with mock.patch.object(cassan, "is_arch_linux", return_value=False):
+                with self.assertRaises(cassan.PreflightError):
+                    cassan.install_aur_packages(["vesktop"], euid=1000)
+            run.assert_not_called()
+
+    def test_aur_pkgbuild_must_be_a_regular_file(self) -> None:
+        repository = self.base / "aur-repository"
+        repository.mkdir()
+        outside = self.base / "outside-pkgbuild"
+        outside.write_text("pkgname=outside\n", encoding="utf-8")
+        os.symlink(str(outside), str(repository / "PKGBUILD"))
+        with self.assertRaises(cassan.PackageError):
+            cassan.verified_pkgbuild(repository, "vesktop")
+
+    def test_aur_packages_parser_exposes_status_and_explicit_install(self) -> None:
+        status = cassan.parser().parse_args(["aur-packages"])
+        install = cassan.parser().parse_args(["aur-packages", "--install"])
+        self.assertEqual(status.command, "aur-packages")
+        self.assertFalse(status.install)
+        self.assertEqual(install.command, "aur-packages")
+        self.assertTrue(install.install)
+
     def test_package_selection_keeps_configs_stable_and_accessories_opt_in(self) -> None:
         non_blocking = [
             "fastfetch",
@@ -708,9 +974,9 @@ class CassanDeploymentTests(unittest.TestCase):
             "zsh",
         ]
         manifest = non_blocking + sorted(cassan.CORE_PACKAGE_NAMES) + [
-            "discord",
             "firefox",
             "spotify-launcher",
+            "xdg-utils",
             "cava",
             "zathura",
         ]
@@ -730,10 +996,10 @@ class CassanDeploymentTests(unittest.TestCase):
                 if package in cassan.CORE_PACKAGE_NAMES
                 or package in (
                     "cava",
-                    "discord",
                     "fastfetch",
                     "firefox",
                     "spotify-launcher",
+                    "xdg-utils",
                 )
             ],
         )

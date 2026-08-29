@@ -17,9 +17,11 @@ from validate_toml import load as load_toml
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 WAYBAR_CONFIG = REPO_DIR / "waybar" / "config.jsonc"
+WAYBAR_STYLE = REPO_DIR / "waybar" / "style.css"
 GTK_THEME_PATHS = (
     REPO_DIR / "waybar" / "theme.css",
     REPO_DIR / "wofi" / "theme.css",
+    REPO_DIR / "wofi" / "style.css",
     REPO_DIR / "swaync" / "theme.css",
 )
 HYPR_ENTRYPOINT = REPO_DIR / "hypr" / "hyprland.lua"
@@ -40,6 +42,11 @@ CAVA_THEME = REPO_DIR / "cava" / "themes" / "nighthowler"
 SWAYNC_STYLE = REPO_DIR / "swaync" / "style.css"
 BTOP_CONFIG = REPO_DIR / "btop" / "btop.conf"
 BTOP_THEME = REPO_DIR / "btop" / "themes" / "nighthowler.theme"
+FIREFOX_CHROME_THEME = REPO_DIR / "firefox" / "cassan-nighthowler.css"
+FIREFOX_CONTENT_THEME = REPO_DIR / "firefox" / "cassan-nighthowler-content.css"
+VESKTOP_THEME = REPO_DIR / "vesktop" / "Cassan-Nighthowler.theme.css"
+SPICETIFY_COLORS = REPO_DIR / "spicetify" / "Cassan-Nighthowler" / "color.ini"
+SPICETIFY_STYLE = REPO_DIR / "spicetify" / "Cassan-Nighthowler" / "user.css"
 
 EXPECTED_WAYBAR_CLUSTERS = {
     "modules-left": ["custom/cassan", "hyprland/workspaces", "mpris"],
@@ -47,13 +54,8 @@ EXPECTED_WAYBAR_CLUSTERS = {
     "modules-right": [
         "cpu",
         "memory",
-        "clock",
-        "network",
-        "bluetooth",
         "pulseaudio",
-        "backlight",
         "battery",
-        "tray",
         "custom/notification",
     ],
 }
@@ -155,15 +157,15 @@ EXPECTED_SWAYNC_TOP_LEVEL_KEYS = {
 }
 
 SWAYNC_TOGGLE_CONTRACTS = {
-    "󰤨": ("nmcli radio wifi", "nmcli radio wifi"),
-    "": ("bluetoothctl power", "bluetoothctl show"),
+    "󰤨": ("/usr/bin/nmcli radio wifi", "/usr/bin/nmcli radio wifi"),
+    "": ("/usr/bin/bluetoothctl power", "/usr/bin/bluetoothctl show"),
     "󰍬": (
-        "wpctl set-mute @DEFAULT_AUDIO_SOURCE@",
-        "wpctl get-volume @DEFAULT_AUDIO_SOURCE@",
+        "/usr/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@",
+        "/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@",
     ),
     "󰕾": (
-        "wpctl set-mute @DEFAULT_AUDIO_SINK@",
-        "wpctl get-volume @DEFAULT_AUDIO_SINK@",
+        "/usr/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@",
+        "/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@",
     ),
 }
 
@@ -338,7 +340,7 @@ def load_strict_json(path: Path) -> Any:
 
 
 def validate_waybar() -> None:
-    """Validate the Waybar document and its three intentional islands."""
+    """Validate the continuous Waybar surface and its module contract."""
     config = load_strict_json(WAYBAR_CONFIG)
     if not isinstance(config, dict):
         raise ValidationError("waybar/config.jsonc must contain one JSON object")
@@ -354,7 +356,7 @@ def validate_waybar() -> None:
         if unexpected:
             details.append(f"unexpected {', '.join(unexpected)}")
         raise ValidationError(
-            "waybar/config.jsonc must define exactly three module clusters ("
+            "waybar/config.jsonc must define exactly three positioning zones ("
             + "; ".join(details)
             + ")"
         )
@@ -366,27 +368,36 @@ def validate_waybar() -> None:
                 f"waybar/config.jsonc {key} must be {expected!r}; found {actual!r}"
             )
 
+    for margin in ("margin-top", "margin-right", "margin-bottom", "margin-left"):
+        if config.get(margin, 0) != 0:
+            raise ValidationError(
+                "waybar/config.jsonc must have no outer margins so the bar spans the monitor"
+            )
+    if "width" in config:
+        raise ValidationError(
+            "waybar/config.jsonc must not set a fixed width on the full-width bar"
+        )
+
+    removed_modules = {"clock", "network", "bluetooth", "backlight", "tray"}
+    configured_removed = sorted(removed_modules.intersection(config))
+    if configured_removed:
+        raise ValidationError(
+            "waybar/config.jsonc must not retain removed bar modules: "
+            + ", ".join(configured_removed)
+        )
+
     expected_actions = {
         "cpu": {"on-click": "kitty --class cassan-btop btop"},
         "memory": {"on-click": "kitty --class cassan-btop btop"},
-        "network": {
-            "on-click": "networkmanager_dmenu",
-            "on-click-right": "nm-connection-editor",
-        },
-        "bluetooth": {"on-click": "blueman-manager"},
         "pulseaudio": {
             "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
             "on-click-right": "pavucontrol",
         },
-        "backlight": {
-            "on-click": "brightnessctl -e4 -n2 set 5%+",
-            "on-click-right": "brightnessctl -e4 -n2 set 5%-",
+        "custom/notification": {
+            "on-click": "swaync-client -t -sw",
+            "on-click-right": "swaync-client -d -sw",
         },
     }
-    if config.get("network", {}).get("format-wifi") != " {essid}":
-        raise ValidationError(
-            "waybar network module must show the connected Wi-Fi name"
-        )
     for module, actions in expected_actions.items():
         settings = config.get(module)
         if not isinstance(settings, dict):
@@ -396,6 +407,41 @@ def validate_waybar() -> None:
                 raise ValidationError(
                     f"waybar {module}.{action} must remain functional"
                 )
+
+    style = read_text(WAYBAR_STYLE)
+    continuous_surface = re.compile(
+        r"window#waybar\s*\{[^}]*background:\s*@cassan-panel;"
+        r"[^}]*border-bottom:\s*2px solid @cassan-focus-inactive;",
+        re.DOTALL,
+    )
+    if not continuous_surface.search(style):
+        raise ValidationError(
+            "waybar/style.css must draw one continuous panel on the Waybar window"
+        )
+    island_selectors = {".modules-left", ".modules-center", ".modules-right"}
+    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", style, re.DOTALL):
+        selectors = {selector.strip() for selector in rule.group(1).split(",")}
+        if not selectors.intersection(island_selectors):
+            continue
+        declarations = rule.group(2)
+        background_values = re.findall(
+            r"background(?:-color)?:\s*([^;]+)", declarations
+        )
+        nontransparent_background = any(
+            value.strip() != "transparent" for value in background_values
+        )
+        separate_border = re.search(r"(?:^|;)\s*border(?:-[^:]+)?:", declarations)
+        radius_values = re.findall(r"border-radius:\s*([^;]+)", declarations)
+        rounded = any(value.strip() not in ("0", "0px") for value in radius_values)
+        if nontransparent_background or separate_border or rounded:
+            raise ValidationError(
+                "waybar/style.css must not recreate separate module islands"
+            )
+    for module in removed_modules:
+        if f"#{module}" in style:
+            raise ValidationError(
+                f"waybar/style.css must not retain styling for removed module {module}"
+            )
 
 
 def read_text(path: Path) -> str:
@@ -572,12 +618,34 @@ def validate_wofi() -> None:
         raise ValidationError("wofi/config violates its portable launcher contract: " + "; ".join(details))
 
     style = read_text(WOFI_STYLE)
-    opaque_outer_box = re.compile(
-        r"#outer-box\s*\{[^}]*background-color:\s*@cassan-panel;", re.DOTALL
-    )
-    if not opaque_outer_box.search(style):
+    if "@import" in style:
         raise ValidationError(
-            "wofi/style.css must keep the launcher panel opaque over the wallpaper"
+            "wofi/style.css must be self-contained because Wofi loses relative import paths"
+        )
+    if "@define-color cassan-panel #151B1D;" not in style:
+        raise ValidationError(
+            "wofi/style.css must include its generated Nighthowler palette"
+        )
+    opaque_surface_contracts = (
+        re.compile(
+            r"window,\s*#window\s*\{[^}]*background-color:\s*@cassan-panel;"
+            r"[^}]*opacity:\s*1;",
+            re.DOTALL,
+        ),
+        re.compile(
+            r"#outer-box\s*\{[^}]*background-color:\s*@cassan-panel;"
+            r"[^}]*opacity:\s*1;",
+            re.DOTALL,
+        ),
+        re.compile(
+            r"#scroll,\s*#scroll viewport,\s*#inner-box\s*\{"
+            r"[^}]*background-color:\s*@cassan-panel;[^}]*opacity:\s*1;",
+            re.DOTALL,
+        ),
+    )
+    if any(not contract.search(style) for contract in opaque_surface_contracts):
+        raise ValidationError(
+            "wofi/style.css must keep every Wofi 1.5 launcher surface opaque"
         )
 
     rules = read_text(REPO_DIR / "hypr" / "rules.lua")
@@ -589,6 +657,16 @@ def validate_wofi() -> None:
             raise ValidationError(
                 "hypr/rules.lua must float the opaque normal Wofi window"
             )
+
+    task_manager_contract = (
+        'name = "float-cassan-task-manager"',
+        'match = { class = "cassan-btop" }',
+        'size = { "(monitor_w*0.82)", "(monitor_h*0.80)" }',
+    )
+    if any(contract not in rules for contract in task_manager_contract):
+        raise ValidationError(
+            "hypr/rules.lua must keep the btop task manager large and floating"
+        )
 
 
 def validate_networkmanager_dmenu() -> None:
@@ -604,7 +682,7 @@ def validate_networkmanager_dmenu() -> None:
 
     expected = {
         "dmenu": {
-            "dmenu_command": "wofi --show dmenu --allow-images",
+            "dmenu_command": "wofi",
             "compact": "True",
             "list_saved": "True",
             "highlight": "True",
@@ -760,6 +838,14 @@ def validate_swaync() -> None:
             raise ValidationError(f"SwayNC quick setting {label!r} ignores its toggle state")
         if contract[0] not in command or contract[1] not in update_command:
             raise ValidationError(f"SwayNC quick setting {label!r} violates its command contract")
+        if "sh -c" in command or "sh -c" in update_command:
+            raise ValidationError(
+                f"SwayNC quick setting {label!r} must not add a nested shell layer"
+            )
+        if not update_command.endswith("; /usr/bin/sleep 0.05"):
+            raise ValidationError(
+                f"SwayNC quick setting {label!r} must preserve the 0.12.6 output-drain window"
+            )
     if set(labels) != set(SWAYNC_TOGGLE_CONTRACTS):
         raise ValidationError("SwayNC quick-setting labels must be unique")
 
@@ -1128,6 +1214,81 @@ def validate_gtk_themes() -> None:
             )
 
 
+def validate_application_themes() -> None:
+    """Keep optional app themes local, generated, and intentionally narrow."""
+    firefox_chrome = read_text(FIREFOX_CHROME_THEME)
+    firefox_content = read_text(FIREFOX_CONTENT_THEME)
+    vesktop = read_text(VESKTOP_THEME)
+    spicetify_style = read_text(SPICETIFY_STYLE)
+
+    if "#navigator-toolbox" not in firefox_chrome or "#urlbar-background" not in firefox_chrome:
+        raise ValidationError("Firefox chrome theme must cover the toolbar and address field")
+    unsafe_firefox_rules = ("display: none", "visibility: hidden", "#identity-box")
+    if any(rule in firefox_chrome for rule in unsafe_firefox_rules):
+        raise ValidationError("Firefox chrome theme must not hide navigation or identity controls")
+    expected_content_scope = (
+        '@-moz-document url("about:home"), url("about:newtab"), url("about:blank")'
+    )
+    if expected_content_scope not in firefox_content:
+        raise ValidationError("Firefox content theme must remain limited to built-in new-tab pages")
+    if "url-prefix(" in firefox_content or 'domain("' in firefox_content:
+        raise ValidationError("Firefox content theme must not style ordinary websites")
+
+    if not vesktop.startswith("/**\n * @name Cassan Nighthowler\n"):
+        raise ValidationError("Vesktop theme must begin with local Vencord metadata")
+    for remote_token in ("@import", "http://", "https://"):
+        if remote_token in vesktop:
+            raise ValidationError("Vesktop theme must not load remote styles or assets")
+    for opaque_token in ("background: transparent", "background-color: transparent", "opacity:"):
+        if opaque_token in vesktop:
+            raise ValidationError("Vesktop theme must keep its application surfaces opaque")
+
+    colors = configparser.ConfigParser(interpolation=None, strict=True)
+    colors.optionxform = str
+    try:
+        colors.read_string(read_text(SPICETIFY_COLORS), source=str(SPICETIFY_COLORS))
+    except configparser.Error as exc:
+        raise ValidationError(f"invalid Spicetify color.ini: {exc}") from exc
+    if colors.sections() != ["Nighthowler"]:
+        raise ValidationError("Spicetify colors must define exactly [Nighthowler]")
+    expected_color_keys = {
+        "text",
+        "subtext",
+        "main",
+        "main-elevated",
+        "main-transition",
+        "highlight",
+        "highlight-elevated",
+        "sidebar",
+        "player",
+        "card",
+        "shadow",
+        "selected-row",
+        "button",
+        "button-active",
+        "button-disabled",
+        "tab-active",
+        "notification",
+        "notification-error",
+        "misc",
+        "play-button",
+        "play-button-active",
+        "progress-fg",
+        "progress-bg",
+        "heart",
+        "pagelink-active",
+        "radio-btn-active",
+    }
+    actual_color_keys = set(colors["Nighthowler"])
+    if actual_color_keys != expected_color_keys:
+        raise ValidationError("Spicetify color scheme violates its generated key contract")
+    for name, value in colors["Nighthowler"].items():
+        if not re.fullmatch(r"[0-9a-f]{6}", value.strip()):
+            raise ValidationError(f"Spicetify color {name} must be six lowercase hex digits")
+    if "@import" in spicetify_style or "http://" in spicetify_style or "https://" in spicetify_style:
+        raise ValidationError("Spicetify theme must not load remote styles or assets")
+
+
 def lua_requires(source: str) -> list[str]:
     """Extract simple require calls in source order, ignoring line comments."""
     modules: list[str] = []
@@ -1169,10 +1330,12 @@ def validate_hypr() -> list[Path]:
     bindings = read_text(HYPR_BINDINGS)
     for command in (
         '"firefox"',
-        '"discord"',
-        '"spotify-launcher"',
+        '"vesktop"',
+        '[[/usr/bin/spotify-launcher --no-exec && /usr/bin/env -u SPICETIFY_CONFIG '
+        '-u SPICETIFY_STATE "$HOME/.spicetify/spicetify" --no-restart auto && '
+        '/usr/bin/spotify-launcher --skip-update]]',
         '"kitty --class cassan-btop btop"',
-        '"kitty --class cassan-fastfetch fastfetch"',
+        '"kitty --hold --class cassan-fastfetch fastfetch"',
         '"kitty --class cassan-cava cava"',
     ):
         if bindings.count(command) != 1:
@@ -1218,7 +1381,7 @@ def main() -> int:
         validate_hyprlock()
         validate_hypridle()
         validate_gtk_themes()
-        validate_style_import(REPO_DIR / "wofi" / "style.css")
+        validate_application_themes()
         validate_style_import(REPO_DIR / "swaync" / "style.css")
         compile_lua(lua_files)
     except ValidationError as exc:

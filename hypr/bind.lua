@@ -4,11 +4,11 @@ local terminal = "kitty"
 local launcher = "wofi --show drun --allow-images"
 local file_manager = "kitty --class cassan-yazi yazi"
 local task_manager = "kitty --class cassan-btop btop"
-local system_info = "kitty --class cassan-fastfetch fastfetch"
+local system_info = "kitty --hold --class cassan-fastfetch fastfetch"
 local visualizer = "kitty --class cassan-cava cava"
 local browser = "firefox"
-local chat = "discord"
-local music = "spotify-launcher"
+local chat = "vesktop"
+local music = [[/usr/bin/spotify-launcher --no-exec && /usr/bin/env -u SPICETIFY_CONFIG -u SPICETIFY_STATE "$HOME/.spicetify/spicetify" --no-restart auto && /usr/bin/spotify-launcher --skip-update]]
 
 -- Core applications and window state.
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd(terminal))
@@ -49,7 +49,7 @@ for key, direction in pairs(directions) do
   }))
 end
 
--- Six persistent workspaces match the compact numbered Waybar island.
+-- Six persistent workspaces stay visible on the continuous Waybar surface.
 for workspace = 1, 6 do
   hl.bind(mod .. " + " .. workspace, hl.dsp.focus({ workspace = workspace }))
   hl.bind(mod .. " + SHIFT + " .. workspace, hl.dsp.window.move({ workspace = workspace }))

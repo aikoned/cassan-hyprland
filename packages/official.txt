@@ -54,8 +54,8 @@ blueman
 
 # Everyday applications
 firefox
-discord
 spotify-launcher
+xdg-utils
 
 # Fonts and broad glyph coverage
 ttf-iosevka-nerd
