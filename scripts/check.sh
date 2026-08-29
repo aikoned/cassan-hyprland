@@ -47,8 +47,10 @@ required_files=(
   packages/official.txt
   scripts/check.sh
   scripts/install.sh
+  scripts/migrate-cassan.py
   scripts/setup-spicetify.sh
   scripts/update.sh
+  tests/test_migrate_cassan.py
   spicetify/CustomApps/marketplace/manifest.json
   spicetify/CustomApps/marketplace/release.json
   spicetify/Themes/Comfy/color.ini
@@ -137,6 +139,7 @@ while IFS= read -r script; do
 done < <(find "$repo_dir/scripts" "$repo_dir/waybar/scripts" "$repo_dir/swaync" -type f -name '*.sh' -print)
 
 python3 - "$repo_dir" <<'PY'
+import ast
 import json
 import hashlib
 import configparser
@@ -150,6 +153,7 @@ except ModuleNotFoundError:
     tomllib = None
 
 root = pathlib.Path(sys.argv[1])
+ast.parse((root / "scripts/migrate-cassan.py").read_text(encoding="utf-8"))
 for relative in (
     "waybar/config.jsonc",
     "swaync/config.json",
@@ -351,6 +355,8 @@ if missing := required_aur - aur:
     raise ValueError(f"AUR package manifest is missing: {sorted(missing)}")
 PY
 
+python3 "$repo_dir/tests/test_migrate_cassan.py"
+
 if rg -n '/home/[^/$ ]+' \
   "$repo_dir/hypr" \
   "$repo_dir/waybar" \
@@ -372,5 +378,15 @@ if rg -n '\bswww(-daemon)?\b' "$repo_dir" \
   printf 'obsolete swww command found; current Arch uses awww\n' >&2
   exit 1
 fi
+
+if rg -n '\.spicetify' "$repo_dir/.zshrc"; then
+  printf 'the shell PATH must not prefer the retired Cassan Spicetify binary\n' >&2
+  exit 1
+fi
+
+rg -q '^spicetify_bin=/usr/bin/spicetify$' "$repo_dir/scripts/setup-spicetify.sh" || {
+  printf 'Spicetify setup must use the reviewed AUR package binary\n' >&2
+  exit 1
+}
 
 printf 'Rice compatibility checks passed.\n'

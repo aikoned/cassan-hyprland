@@ -5,6 +5,7 @@ set -euo pipefail
 install_packages=false
 install_aur=false
 link_shell=false
+migrate_cassan=false
 
 usage() {
   cat <<'EOF'
@@ -13,6 +14,8 @@ Usage: ./scripts/install.sh [options]
   --packages    Fully update Arch and install official dependencies
   --aur         Install reviewed optional AUR packages with yay or paru
   --with-shell  Back up and link the included .zshrc
+  --migrate-cassan
+                Archive remnants from the former Cassan setup first
   -h, --help    Show this help
 EOF
 }
@@ -22,6 +25,7 @@ while (( $# > 0 )); do
     --packages) install_packages=true ;;
     --aur) install_aur=true ;;
     --with-shell) link_shell=true ;;
+    --migrate-cassan) migrate_cassan=true ;;
     -h|--help)
       usage
       exit 0
@@ -57,7 +61,6 @@ config_names=(
   wlogout
   yazi
   zathura
-  spicetify
   vesktop
   gtk-3.0
   gtk-4.0
@@ -76,7 +79,15 @@ read_packages() {
 
 # Reject an incomplete checkout before pacman, AUR helpers, backups, or links
 # can change the host system.
-link_sources=("${config_names[@]}" assets assets-profile)
+link_sources=(
+  "${config_names[@]}"
+  assets
+  assets-profile
+  spicetify/Themes/Comfy
+  spicetify/Themes/marketplace
+  spicetify/Themes/text
+  spicetify/CustomApps/marketplace
+)
 if [[ "$link_shell" == true ]]; then
   link_sources+=(.zshrc)
 fi
@@ -156,6 +167,10 @@ fi
 # ripgrep may only have become available in the package transaction above.
 "$repo_dir/scripts/check.sh"
 
+if [[ "$migrate_cassan" == true ]]; then
+  python3 "$repo_dir/scripts/migrate-cassan.py" --apply
+fi
+
 mkdir -p "$config_dir" "$state_dir" "$cache_dir"
 mkdir -p "$HOME/Pictures/Screenshots"
 
@@ -193,9 +208,46 @@ link_path() {
   printf 'linked: %s -> %s\n' "$destination" "$source"
 }
 
+ensure_real_directory() {
+  local destination=$1
+  local backup_relative=$2
+
+  if [[ -d "$destination" && ! -L "$destination" ]]; then
+    return
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    ensure_backup_dir
+    mkdir -p "$backup_dir/$(dirname -- "$backup_relative")"
+    mv -- "$destination" "$backup_dir/$backup_relative"
+    printf 'backed up: %s -> %s\n' "$destination" "$backup_dir/$backup_relative"
+  fi
+  mkdir -p "$destination"
+}
+
+ensure_real_directory "$config_dir/spicetify" "config/spicetify"
+ensure_real_directory "$config_dir/spicetify/Themes" "config/spicetify/Themes"
+ensure_real_directory "$config_dir/spicetify/CustomApps" "config/spicetify/CustomApps"
+
 for name in "${config_names[@]}"; do
   link_path "$repo_dir/$name" "$config_dir/$name" "config/$name"
 done
+
+link_path \
+  "$repo_dir/spicetify/Themes/Comfy" \
+  "$config_dir/spicetify/Themes/Comfy" \
+  "config/spicetify/Themes/Comfy"
+link_path \
+  "$repo_dir/spicetify/Themes/marketplace" \
+  "$config_dir/spicetify/Themes/marketplace" \
+  "config/spicetify/Themes/marketplace"
+link_path \
+  "$repo_dir/spicetify/Themes/text" \
+  "$config_dir/spicetify/Themes/text" \
+  "config/spicetify/Themes/text"
+link_path \
+  "$repo_dir/spicetify/CustomApps/marketplace" \
+  "$config_dir/spicetify/CustomApps/marketplace" \
+  "config/spicetify/CustomApps/marketplace"
 
 link_path "$repo_dir/assets" "$config_dir/hyprland-dots/assets" "config/hyprland-dots-assets"
 link_path "$repo_dir/assets-profile" "$config_dir/hyprland-dots/assets-profile" "config/hyprland-dots-assets-profile"
