@@ -3,6 +3,7 @@
   "position": "top",
   "height": 40,
   "spacing": 5,
+  "fixed-center": false,
   "reload_style_on_change": true,
 
   "modules-left": [
@@ -102,7 +103,10 @@
     "format": "[  {status_icon} | {dynamic} ]",
     "format-stopped": "",
     "interval": 1,
-    "dynamic-len": 40,
+    "dynamic-len": 22,
+    "artist-len": 22,
+    "title-len": 22,
+    "max-length": 32,
     "status-icons": {
       "playing": "▶",
       "paused": "⏸",
@@ -124,7 +128,7 @@
   },
   "hyprland/window": {
     "format": "{title}",
-    "max-length": 20,
+    "max-length": 12,
     "min-length": 0,
     "separate-outputs": true
   },

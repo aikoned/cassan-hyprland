@@ -50,6 +50,7 @@ required_files=(
   scripts/migrate-cassan.py
   scripts/setup-spicetify.sh
   scripts/update.sh
+  spotify-launcher.conf
   tests/test_migrate_cassan.py
   spicetify/CustomApps/marketplace/manifest.json
   spicetify/CustomApps/marketplace/release.json
@@ -245,9 +246,34 @@ for relative in (
     "yazi/yazi.toml",
     "yazi/theme.toml",
     "yazi/flavors/noctalia.yazi/flavor.toml",
+    "spotify-launcher.conf",
 ):
     with (root / relative).open("rb") as handle:
         tomllib.load(handle)
+
+with (root / "spotify-launcher.conf").open("rb") as handle:
+    spotify_launcher = tomllib.load(handle)
+expected_spotify_arguments = [
+    "--enable-features=UseOzonePlatform",
+    "--ozone-platform=wayland",
+]
+if spotify_launcher.get("spotify", {}).get("extra_arguments") != expected_spotify_arguments:
+    raise ValueError("Spotify launcher must request native Wayland rendering")
+
+waybar = json.loads((root / "waybar/config.jsonc").read_text(encoding="utf-8"))
+if waybar.get("fixed-center") is not False:
+    raise ValueError("Waybar fixed-center must be disabled to prevent module overlap")
+mpris = waybar.get("mpris", {})
+if (
+    mpris.get("dynamic-len"),
+    mpris.get("artist-len"),
+    mpris.get("title-len"),
+    mpris.get("max-length"),
+) != (22, 22, 22, 32):
+    raise ValueError("Waybar MPRIS text limits are too wide for the laptop layout")
+window = waybar.get("hyprland/window", {})
+if window.get("max-length") != 12:
+    raise ValueError("Waybar window title is too wide for the laptop layout")
 
 # Selected local themes must exist, and Vesktop must only enable bundled CSS.
 btop = (root / "btop/btop.conf").read_text(encoding="utf-8")

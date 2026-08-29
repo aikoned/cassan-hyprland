@@ -18,7 +18,7 @@
 
 #custom-openbracket,
 #custom-closebracket {
-  margin: 0 5px;
+  margin: 0 3px;
 }
 
 window#waybar {
@@ -92,7 +92,7 @@ button {
 /* workspace pannel */
 #workspaces button {
   min-width: 0;
-  padding: 0 8px 0 8px;
+  padding: 0 5px;
   background-color: transparent;
   color: @text;
   border-radius: 0;
@@ -149,7 +149,7 @@ button {
 #custom-clipboard,
 #custom-bluetooth,
 #network {
-  padding: 0 10px;
+  padding: 0 6px;
 }
 
 #clock:hover,

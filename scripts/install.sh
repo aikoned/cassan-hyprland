@@ -83,6 +83,7 @@ link_sources=(
   "${config_names[@]}"
   assets
   assets-profile
+  spotify-launcher.conf
   spicetify/Themes/Comfy
   spicetify/Themes/marketplace
   spicetify/Themes/text
@@ -231,6 +232,11 @@ ensure_real_directory "$config_dir/spicetify/CustomApps" "config/spicetify/Custo
 for name in "${config_names[@]}"; do
   link_path "$repo_dir/$name" "$config_dir/$name" "config/$name"
 done
+
+link_path \
+  "$repo_dir/spotify-launcher.conf" \
+  "$config_dir/spotify-launcher.conf" \
+  "config/spotify-launcher.conf"
 
 link_path \
   "$repo_dir/spicetify/Themes/Comfy" \
