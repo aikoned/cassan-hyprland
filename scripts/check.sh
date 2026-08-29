@@ -27,7 +27,9 @@ required_paths=(
   "kitty/kitty.conf"
   "kitty/theme.conf"
   "packages/official.txt"
+  "scripts/cassan.py"
   "scripts/render_theme.py"
+  "scripts/test_cassan.py"
   "scripts/validate_config.py"
   "scripts/validate_toml.py"
   "swaync/config.json"
@@ -65,13 +67,15 @@ if [[ -n "$tracked_preview_paths" ]]; then
   exit 1
 fi
 
-if command -v python3 >/dev/null 2>&1; then
-  python3 "$repo_dir/scripts/validate_toml.py"
-  python3 "$repo_dir/scripts/validate_config.py"
-  python3 "$repo_dir/scripts/render_theme.py" --check
-else
-  echo "warning: python3 unavailable; skipped configuration validation" >&2
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required for Cassan configuration validation" >&2
+  exit 1
 fi
+
+python3 "$repo_dir/scripts/validate_toml.py"
+python3 "$repo_dir/scripts/validate_config.py"
+python3 "$repo_dir/scripts/render_theme.py" --check
+python3 -B "$repo_dir/scripts/test_cassan.py"
 
 git -C "$repo_dir" diff --check
 git -C "$repo_dir" diff --cached --check
