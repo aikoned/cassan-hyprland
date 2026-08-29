@@ -1,7 +1,4 @@
--- Cassan Hyprland entry point.
---
--- Keep concerns in separate modules so theme, hardware, and behavior can evolve
--- independently. Modules execute in this order when required.
+-- Hyprland 0.55 deprecated Hyprlang compositor configuration in favor of Lua.
 
 require("environment")
 require("monitor")

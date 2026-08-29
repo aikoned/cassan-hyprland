@@ -1,0 +1,12 @@
+{
+  "version": "1.0.10",
+  "release": "https://github.com/spicetify/marketplace/releases/tag/v1.0.10",
+  "archiveSha256": "80f7f8edb5df361cb1a0b03bda8ca4f67e7b194041a840b6888faf6e6140bac6",
+  "files": {
+    "README.md": "485557ab45e6ad7c3baefa1a46c56fedf5afbd1d30d4b0e0c66b4a159f2044eb",
+    "extension.js": "f2c16ab391182258b488e4d03b060463ce1828eca4c5c28708a60302af4f92c7",
+    "index.js": "3f3e6e771d0dfd7ee54185a5ece22a8e8efcb5078a2e6f792e599ab896565456",
+    "manifest.json": "a7508617e114ade55ed7334197a71a41162a376fdd5362cffdc5ddef7aaa18e5",
+    "style.css": "5e68f021e15ee1044c029d91cd518b8fd981b90482262134ab1804d2e97e913e"
+  }
+}

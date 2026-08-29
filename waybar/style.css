@@ -1,157 +1,210 @@
-@import url("theme.css");
+/* colors defined at top for easy configuring */
+@define-color background #2C2A24;
+@define-color second-background #3A372F;
+@define-color text #DDD5C4;
+@define-color borders #A0907A;
+@define-color focused #D08B57;
+@define-color focused2 #BFAA80;
+@define-color color1 #7699A3;
+@define-color color2 #8D7AAE;
+@define-color color3 #78997A;
+@define-color urgent #B05A5A;
+
 
 * {
-  border: none;
-  border-radius: 0;
-  min-height: 0;
   font-family: "Iosevka Nerd Font";
   font-size: 15px;
-  font-weight: 500;
+}
+
+#custom-openbracket,
+#custom-closebracket {
+  margin: 0 5px;
 }
 
 window#waybar {
-  background: @cassan-panel;
-  color: @cassan-text;
-  border-bottom: 2px solid @cassan-focus-inactive;
+  background-color: transparent;
+  border-bottom: 0;
+  color: @text;
+  transition: background-color 0.5s;
 }
 
-.modules-left,
-.modules-center,
+window#waybar.hidden {
+  opacity: 0.2;
+}
+
+window#waybar.empty #window {
+  background-color: transparent;
+}
+
+
+/* configuring the modules */
+.modules-left {
+  margin: 10px 0 0 10px;
+  padding: 0 0 0 7px;
+  background-color: @background;
+  border: 2px solid @focused;
+}
+
+.modules-center {
+  margin: 10px 0 0 0;
+  padding: 0 10px 0 10px;
+  background-color: @background;
+  border: 2px solid @focused;
+}
+
 .modules-right {
-  min-height: 32px;
-  background: transparent;
+  margin: 10px 10px 0 0;
+  padding: 0 10px 0 10px;
+  background-color: @background;
+  border: 2px solid @focused;
 }
 
-tooltip {
-  background: @cassan-panel;
-  color: @cassan-text;
-  border: 2px solid @cassan-focus-inactive;
-  border-radius: 4px;
+
+button {
+  border: none;
 }
 
-tooltip label {
-  padding: 6px 8px;
-  color: @cassan-text;
+
+/* left island */
+
+/* menu pannel */
+#custom-arch,
+#custom-powerprofile,
+#custom-themeswitcher {
+  padding-right: 10px;
+  padding-left: 5px;
+  font-size: 15px;
+  border-radius: 8px;
 }
 
-#custom-cassan {
-  padding: 0 10px;
-  color: @cassan-focus;
-  font-weight: 700;
+#custom-arch:hover {
+  color: @color1;
 }
 
-#custom-cassan:hover,
-#mpris:hover,
-#cpu:hover,
-#memory:hover,
-#pulseaudio:hover,
-#battery:hover,
-#custom-notification:hover {
-  background: @cassan-panel-alternate;
-  color: @cassan-text;
+#custom-powerprofile:hover {
+  color: @color1
 }
 
-#workspaces {
-  padding: 0 3px;
-  border-left: 1px solid @cassan-panel-alternate;
-  border-right: 1px solid @cassan-panel-alternate;
+#custom-themeswitcher:hover {
+  color: @color1;
 }
 
+/* workspace pannel */
 #workspaces button {
-  min-width: 12px;
-  padding: 0 6px;
-  background: transparent;
-  color: @cassan-text-muted;
-  border-radius: 2px;
-  box-shadow: none;
-  text-shadow: none;
+  min-width: 0;
+  padding: 0 8px 0 8px;
+  background-color: transparent;
+  color: @text;
+  border-radius: 0;
 }
 
 #workspaces button:hover {
-  background: @cassan-panel-alternate;
-  color: @cassan-text-secondary;
-  box-shadow: none;
-  text-shadow: none;
+  background-color: @second-background;
 }
 
 #workspaces button.active {
-  background: @cassan-focus;
-  color: @cassan-panel;
-}
-
-#workspaces button.visible:not(.active) {
-  color: @cassan-text-secondary;
+  color: @focused2;
+  background-color: @second-background;
 }
 
 #workspaces button.urgent {
-  background: @cassan-urgent;
-  color: @cassan-panel;
+  background-color: @urgent;
 }
 
+.modules-left>widget:first-child>#workspaces {
+  margin-left: 0;
+}
+
+.modules-right>widget:last-child>#workspaces {
+  margin-right: 0;
+}
+
+/* media player */
 #mpris {
-  padding: 0 10px;
-  color: @cassan-text-secondary;
+  margin: 0 0 0 5px;
+  padding: 0 9px;
+  background-color: @background;
+  color: @text;
 }
 
-#mpris.paused,
-#mpris.stopped {
-  color: @cassan-text-muted;
+#mpris.playing {
+  background-color: @color3;
+  border-radius: 2px;
+  color: @background;
 }
 
+
+/* center module  */
 #window {
-  padding: 0 14px;
-  color: @cassan-text-secondary;
+  padding: 0 5px;
 }
 
+/* Right Island */
+
+/* module general styles */
+#clock,
+#battery,
 #cpu,
 #memory,
-#pulseaudio,
-#battery,
-#custom-notification {
-  padding: 0 7px;
+#custom-clipboard,
+#custom-bluetooth,
+#network {
+  padding: 0 10px;
 }
 
-#memory,
-#pulseaudio,
-#battery,
-#custom-notification {
-  border-left: 1px solid @cassan-panel-alternate;
+#clock:hover,
+#battery:hover,
+#cpu:hover,
+#custom-clipboard:hover,
+#custom-bluetooth:hover,
+#network:hover,
+#idle_inhibitor:hover,
+#custom-swaync:hover,
+#backlight:hover,
+#wireplumber:hover {
+  color: @color1;
 }
 
-#cpu {
-  color: @cassan-warm-accent;
+#idle_inhibitor {
+  padding: 0 10px 0 0;
 }
 
-#memory {
-  color: @cassan-text-secondary;
+#custom-powerprofile {
+  padding: 0 8px 0 4px;
 }
 
-#pulseaudio.muted {
-  color: @cassan-text-muted;
+/* Remaining Modules */
+#backlight,
+#wireplumber {
+  padding: 0 5px;
+}
+
+#wireplumber.muted {
+  background-color: @color2;
+}
+
+#custom-swaync {
+  padding: 0 10px 0 5px;
+  font-size: 16px;
+  /* same scale as other icons */
+  color: @text;
 }
 
 #battery.charging,
-#battery.plugged,
-#battery.full {
-  color: @cassan-focus;
-}
-
-#battery.warning:not(.charging) {
-  color: @cassan-warm-accent;
+#battery.plugged {
+  background-color: @focused2 ;
+  color: @background;
 }
 
 #battery.critical:not(.charging) {
-  color: @cassan-urgent;
+  background-color: @urgent;
+  color: @text;
+  animation: blink 0.5s steps(12) infinite alternate;
 }
 
-#custom-notification {
-  padding-right: 10px;
-  color: @cassan-text-secondary;
-}
-
-#custom-notification.notification,
-#custom-notification.dnd-notification,
-#custom-notification.inhibited-notification,
-#custom-notification.dnd-inhibited-notification {
-  color: @cassan-urgent;
+@keyframes blink {
+  to {
+    background-color: @second-background;
+    color: @text;
+  }
 }

@@ -18,14 +18,14 @@ Thumbs.db
 credentials*
 secrets*
 
-# User-specific Cassan state
+# User-specific workspace state
 local/*
 !local/README.md
 state/
 backups/
 logs/
 
-# User-owned or unlicensed media
+# User-owned media
 wallpapers/private/
 assets/*/private/
 
@@ -42,6 +42,7 @@ __pycache__/
 .config/discord/
 .config/vesktop/sessionData/
 .config/spotify/
+/spicetify/config-xpui.ini
 .ssh/
 .gnupg/
 .zsh_history

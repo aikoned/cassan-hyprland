@@ -1,0 +1,18 @@
+{
+  "upstream": "https://github.com/Comfy-Themes/Spicetify",
+  "commit": "32ff101e27cfd33d85b7cc587f7f95db6b2df8b0",
+  "verified": "2026-08-29",
+  "note": "app.css and theme.script.js are pristine upstream files; user.css and theme.js are derived entry points whose static web assets are rewritten to the bundled comfy-vendor directory.",
+  "files": {
+    "app.css": "de327485f2048e7b1750916559061376920ffbf4791d04ec54410977e8e892d4",
+    "assets/comfy-vendor/color.ini": "5bcd27f29a34147a1dd48db3e31b2d695b7b99e583825c796dc614866ae0e63b",
+    "assets/comfy-vendor/column-bar.png": "4a98012e156bd91db5191fc5a73a041e3baa07da6ed2d255b194140d7e22dcae",
+    "assets/comfy-vendor/font-url.png": "9a44e7d1c59589e2f0ca6efb9302673c43915354501d57b682eeccb9ecf5d170",
+    "assets/comfy-vendor/kitty.gif": "8d300d5569b320884c708d428a1dcfc99a7f59b6691208d815bb3e1256d63e3f",
+    "assets/comfy-vendor/upgrade.png": "44169b1721bfe1fea01a8d085b054a41310041803e9a4c2cfba55f5045c3a50a",
+    "color.ini": "5bcd27f29a34147a1dd48db3e31b2d695b7b99e583825c796dc614866ae0e63b",
+    "theme.script.js": "ec82256f13a4ca1faeb0daed4829300e0f7120a8ceb8bc69bfb3adcd0e97654f",
+    "theme.js": "191c98b7ee81efd3c6fcf166d6db612983efbb7a07b34ae8c701f103ff9519ae",
+    "user.css": "e4de8c5880aff1fbdc16810d1b8b0edccb6b10c604a6945b261b6e41efac6ce0"
+  }
+}

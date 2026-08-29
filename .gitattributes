@@ -1,0 +1,5 @@
+# Keep reviewed third-party snapshots byte-for-byte, including upstream
+# whitespace, while retaining normal text diffs for review.
+cava/themes/** -whitespace
+spicetify/** -whitespace
+vesktop/themes/** -whitespace

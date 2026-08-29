@@ -1,139 +1,266 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 34,
-  "spacing": 0,
-  "fixed-center": true,
-  "exclusive": true,
+  "height": 40,
+  "spacing": 5,
   "reload_style_on_change": true,
 
   "modules-left": [
-    "custom/cassan",
-    "hyprland/workspaces",
+    "group/utilities",
+    "group/workspaces",
     "mpris"
   ],
   "modules-center": [
-    "hyprland/window"
+    "group/windows"
   ],
   "modules-right": [
-    "cpu",
-    "memory",
-    "pulseaudio",
-    "battery",
-    "custom/notification"
+    "group/cpuram",
+    "group/brightvol",
+    "group/system"
   ],
 
-  "custom/cassan": {
-    "exec": "printf '\\n'",
-    "interval": "once",
-    "format": "{}",
-    "tooltip-format": "Cassan Nighthowler\nSuper + Space — launcher",
-    "on-click": "wofi --show drun --allow-images"
+  "custom/openbracket": {
+    "format": "[",
+    "tooltip": false
   },
-
-  "hyprland/workspaces": {
-    "format": "{name}",
-    "sort-by": "number",
-    "persistent-workspaces": {
-      "*": 6
-    },
-    "show-special": false,
-    "active-only": false,
-    "all-outputs": false,
-    "disable-scroll": true,
+  "custom/closebracket": {
+    "format": "]",
+    "tooltip": false
+  },
+  "custom/split": {
+    "format": "|",
     "tooltip": false
   },
 
+  "group/utilities": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "custom/arch",
+      "idle_inhibitor",
+      "custom/split",
+      "custom/powerprofile",
+      "custom/themeswitcher",
+      "custom/closebracket"
+    ]
+  },
+  "custom/arch": {
+    "format": "󰣇",
+    "tooltip": false,
+    "on-click": "wofi --show drun"
+  },
+  "idle_inhibitor": {
+    "format": "{icon}",
+    "format-icons": {
+      "activated": "",
+      "deactivated": ""
+    }
+  },
+  "custom/powerprofile": {
+    "exec": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/powerprofile.sh\" display",
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/powerprofile.sh\" toggle",
+    "interval": 5,
+    "tooltip": true,
+    "tooltip-format": "Power profile: {}\nClick to cycle"
+  },
+  "custom/themeswitcher": {
+    "format": "",
+    "tooltip": true,
+    "tooltip-format": "Left-click: next wallpaper\nRight-click: random wallpaper",
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" next",
+    "on-click-right": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" random"
+  },
+
+  "group/workspaces": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "hyprland/workspaces",
+      "custom/closebracket"
+    ]
+  },
+  "hyprland/workspaces": {
+    "all-outputs": true,
+    "warp-on-scroll": false,
+    "disable-scroll-wraparound": true,
+    "active-only": false,
+    "format": "{icon}",
+    "persistent-workspaces": {
+      "*": 6
+    },
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "default": "•"
+    }
+  },
   "mpris": {
-    "format": "{status_icon} {dynamic}",
-    "format-paused": "{status_icon} {dynamic}",
+    "format": "[  {status_icon} | {dynamic} ]",
     "format-stopped": "",
+    "interval": 1,
+    "dynamic-len": 40,
     "status-icons": {
-      "playing": "",
-      "paused": "",
+      "playing": "▶",
+      "paused": "⏸",
       "stopped": ""
     },
     "dynamic-order": [
-      "title",
-      "artist"
-    ],
-    "title-len": 16,
-    "artist-len": 12,
-    "dynamic-len": 24,
-    "tooltip-format": "{player} · {status}\n{title}\n{artist}"
+      "artist",
+      "title"
+    ]
   },
 
+  "group/windows": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "hyprland/window",
+      "custom/closebracket"
+    ]
+  },
   "hyprland/window": {
-    "format": "[ {title} ]",
-    "max-length": 36,
+    "format": "{title}",
+    "max-length": 20,
+    "min-length": 0,
     "separate-outputs": true
   },
 
+  "group/cpuram": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "cpu",
+      "custom/split",
+      "memory",
+      "custom/closebracket"
+    ]
+  },
   "cpu": {
-    "interval": 2,
     "format": "CPU:{usage}%",
-    "tooltip-format": "CPU usage: {usage}%\nClick to open task manager",
-    "on-click": "kitty --class cassan-btop btop"
+    "tooltip": false,
+    "interval": 2,
+    "on-click": "kitty -e btop"
   },
-
   "memory": {
-    "interval": 5,
     "format": "RAM:{percentage}%",
-    "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB\nClick to open task manager",
-    "on-click": "kitty --class cassan-btop btop"
+    "tooltip": false,
+    "interval": 2,
+    "on-click": "kitty -e btop"
   },
 
-  "pulseaudio": {
-    "format": "{icon} {volume}%",
-    "format-muted": "󰙟",
+  "group/brightvol": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "backlight",
+      "custom/split",
+      "wireplumber",
+      "custom/closebracket"
+    ]
+  },
+  "backlight": {
+    "format": "{icon}:{percent}%",
+    "format-icons": [
+      "",
+      "",
+      "󰖨"
+    ],
+    "on-scroll-up": "brightnessctl set 5%+",
+    "on-scroll-down": "brightnessctl set 5%-"
+  },
+  "wireplumber": {
+    "scroll-step": 5,
+    "format": "{icon}{volume}%",
+    "format-bluetooth": "{icon}{volume}% ",
+    "format-bluetooth-muted": "󰝟 {icon}",
+    "format-muted": "󰝟",
     "format-icons": {
       "headphone": "",
-      "headset": "󰌄",
+      "hands-free": "󰋎",
+      "headset": "󰋎",
       "phone": "",
       "portable": "",
       "car": "",
       "default": [
-        "",
-        "",
-        ""
+        ":",
+        ":",
+        ":"
       ]
     },
-    "scroll-step": 5,
-    "tooltip-format": "{desc}\nVolume: {volume}%\nClick to mute · Right-click for mixer",
     "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-click-right": "pavucontrol"
   },
 
+  "group/system": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/openbracket",
+      "clock",
+      "custom/split",
+      "network",
+      "custom/bluetooth",
+      "custom/clipboard",
+      "battery",
+      "custom/swaync",
+      "custom/closebracket"
+    ]
+  },
+  "clock": {
+    "format": "{:%I:%M}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+  "network": {
+    "format-wifi": "{icon}",
+    "format-ethernet": "󰈀 LAN",
+    "format-disconnected": "󰖪",
+    "tooltip-format": "{ipaddr}\n{ssid} ({signalStrength}%)",
+    "on-click": "kitty -e nmtui",
+    "format-icons": [
+      "󰤯",
+      "󰤟",
+      "󰤢",
+      "󰤥",
+      "󰤨"
+    ]
+  },
+  "custom/bluetooth": {
+    "format": "{}",
+    "exec": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/bluetooth_status.sh\"",
+    "interval": 5,
+    "on-click": "blueman-manager"
+  },
+  "custom/clipboard": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/clipboard_menu.sh\""
+  },
   "battery": {
-    "interval": 30,
     "states": {
       "warning": 30,
       "critical": 15
     },
     "format": "{icon} {capacity}%",
+    "format-full": "{icon} {capacity}%",
     "format-charging": "󰂄 {capacity}%",
-    "format-plugged": "󰂄 {capacity}%",
-    "format-full": "󰁹 {capacity}%",
+    "format-plugged": " {capacity}%",
     "format-icons": [
-      "󰁺",
-      "󰁻",
-      "󰁼",
-      "󰁽",
-      "󰁾",
-      "󰁿",
-      "󰂀",
-      "󰂁",
-      "󰂂",
-      "󰁹"
+      "",
+      "",
+      "",
+      "",
+      ""
     ],
-    "tooltip-format": "{time}\n{capacity}%"
+    "on-click": "wlogout"
   },
-
-  "custom/notification": {
+  "custom/swaync": {
     "return-type": "json",
+    "format": "{icon}",
     "exec": "swaync-client -swb",
     "restart-interval": 1,
-    "format": "{icon}",
     "format-icons": {
       "notification": " ",
       "none": "",
@@ -146,7 +273,7 @@
     },
     "tooltip": false,
     "escape": true,
-    "on-click": "swaync-client -t -sw",
-    "on-click-right": "swaync-client -d -sw"
+    "on-click": "swaync-client --toggle-panel",
+    "on-click-right": "swaync-client --toggle-dnd"
   }
 }

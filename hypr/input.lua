@@ -8,15 +8,15 @@ hl.config({
     follow_mouse = 1,
     sensitivity = 0,
     touchpad = {
+      natural_scroll = true,
+      scroll_factor = 0.3,
+      clickfinger_behavior = true,
       disable_while_typing = true,
-      natural_scroll = false,
       tap_to_click = true,
-      tap_and_drag = true,
     },
   },
 })
 
--- A restrained laptop gesture that mirrors the numbered workspace bindings.
 hl.gesture({
   fingers = 3,
   direction = "horizontal",

@@ -1,64 +1,95 @@
-# Preliminary official Arch package names.
-# Revalidate every entry immediately before the laptop installation.
+# Current Arch repository packages used by this rice.
+# Install as a complete transaction; do not perform partial Arch upgrades.
 
-# Desktop core
+# Hyprland session
 hyprland
+hyprshutdown
 waybar
 kitty
 wofi
 swaync
-hyprpaper
+awww
 hyprlock
 hypridle
 xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
 hyprpolkitagent
 
-# Cassan deployment and validation
-git
-python
-lua
-less
-
-# Terminal surfaces
-yazi
-file
-fastfetch
-cava
-btop
-
-# Documents
-zathura
-zathura-pdf-mupdf
-
-# Wayland utilities
-wl-clipboard
-grim
-slurp
-swappy
-brightnessctl
-playerctl
-zsh
-networkmanager-dmenu
-nm-connection-editor
-pavucontrol
-libnotify
-
-# Desktop services
+# Desktop utilities and services
+thunar
+thunar-volman
+thunar-archive-plugin
+gvfs
+gvfs-mtp
+tumbler
+ffmpegthumbnailer
+poppler-glib
+libgsf
+libgepub
+libopenraw
+xarchiver
 networkmanager
+network-manager-applet
 pipewire
 pipewire-pulse
 wireplumber
 bluez
 bluez-utils
 blueman
+power-profiles-daemon
+qt6ct
+qt6-wayland
+adwaita-icon-theme
+gnome-themes-extra
 
-# Everyday applications
-firefox
+# Wayland tools
+wl-clipboard
+cliphist
+grim
+slurp
+swappy
+otf-font-awesome
+brightnessctl
+playerctl
+libnotify
+pavucontrol
+
+# Rice applications
+btop
+cava
+fastfetch
+yazi
+7zip
+chafa
+ffmpeg
+imagemagick
+jq
+poppler
+resvg
+fd
+zoxide
+neovim
+zathura
+zathura-pdf-mupdf
+mpv
+mediainfo
+perl-image-exiftool
 spotify-launcher
 xdg-utils
 
-# Fonts and broad glyph coverage
+# Shell and fonts
+zsh
+fzf
+zsh-autosuggestions
+zsh-syntax-highlighting
 ttf-iosevka-nerd
 noto-fonts
-noto-fonts-cjk
 noto-fonts-emoji
+
+# Maintenance and validation
+curl
+git
+less
+python
+ripgrep
+unzip

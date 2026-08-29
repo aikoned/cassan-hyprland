@@ -1,0 +1,24 @@
+{
+  "verified": "2026-08-29",
+  "upstreams": {
+    "system24": {
+      "repository": "https://github.com/refact0r/system24",
+      "commit": "c4b24d84d9b0f4bf6a0eea6d5dc57f629ede2aef",
+      "published_css_sha256": "d95b178b999f8d76f781249ef4e5473214906a4eb9f3fb4a388f0a1a12ff937e"
+    },
+    "midnight-discord": {
+      "repository": "https://github.com/refact0r/midnight-discord",
+      "commit": "6d3391b8222881437d4fe4cef9386cf26e2048ce",
+      "published_css_sha256": "cb3da6e5e76ebbeb9ade5c46ee334eabb21366229742fa3e12334a43e62bc961"
+    }
+  },
+  "note": "Published imports and assets are rewritten to local paths; Google font imports are omitted because the rice selects installed Iosevka fonts.",
+  "files": {
+    "midnight-discord.css": "93719609e6fd66e832a9fee45b939dff04b0d21ed696ba55c4db420e58151d61",
+    "vendor/system24/asciid.woff": "bcdb78f1b656c010a357515b44ca89a2e82db0ef9a9962d3fa2f664456005552",
+    "vendor/system24/cats.gif": "94902685870578d64883cb50be3c363586e40a158c268f5e0ba2ea514d4cfa94",
+    "vendor/system24/midnight.css": "f55f6bf1b40dfb51473686bb00250a2f305b0afc062e46a5d97a16292ff38ed0",
+    "vendor/system24/moon.svg": "e9e5c6e958554e74376683e284925016d1932c004fb47540b1b4d9ed665adb79",
+    "vendor/system24/system24.css": "844968738f00d263338c6dc4f5e2fd1f9eda0078f036a7d787cc3de14cd6e8b2"
+  }
+}

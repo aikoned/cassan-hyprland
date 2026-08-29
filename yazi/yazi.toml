@@ -1,24 +1,29 @@
 #:schema https://yazi-rs.github.io/schemas/yazi.json
 
-[mgr]
-ratio = [1, 4, 3]
-sort_by = "natural"
-sort_sensitive = false
-sort_reverse = false
-sort_dir_first = true
-sort_translit = false
-sort_fallback = "natural"
-linemode = "size"
-show_hidden = false
-show_symlink = true
-scrolloff = 5
-mouse_events = ["click", "scroll"]
+[opener]
+edit = [
+	{ run = '${EDITOR:-nvim} %s', desc = "$EDITOR", block = true, for = "unix" },
+]
 
-[preview]
-wrap = "no"
-tab_size = 2
-max_width = 1200
-max_height = 1200
-image_delay = 30
-image_filter = "triangle"
-image_quality = 75
+open = [
+	{ run = 'xdg-open %s1', desc = "Open", for = "linux" },
+]
+
+reveal = [
+	{ run = 'xdg-open %d1', desc = "Reveal", for = "linux" },
+	{ run = '''clear; exiftool %s1; echo "Press enter to exit"; read _''', block = true, desc = "Show EXIF", for = "unix" },
+]
+
+extract = [
+	{ run = 'ya pub extract --list %s', desc = "Extract here", for = "unix" },
+]
+
+play = [
+	{ run = 'mpv --force-window %s', orphan = true, desc = "Play", for = "unix" },
+	{ run = '''mediainfo %s1; echo "Press enter to exit"; read _''', block = true, desc = "Show media info", for = "unix" },
+]
+
+[pick]
+open_title  = "Open with:"
+open_origin = "hovered"
+open_offset = [0, 1, 50, 7]

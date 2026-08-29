@@ -1,12 +1,12 @@
-# Optional AUR packages belong here only after source and maintenance review.
-# Keep the core desktop independent of this file.
+# Optional packages from the Arch User Repository.
+# Review PKGBUILDs before installing or updating them.
 
-# Reviewed optional applications
+# Used by the Super+Shift+X power-menu binding.
+wlogout
+
+# Configuration included in this repository but not required for the desktop.
 vesktop
 
-# Compatibility hold: spicetify-cli 2.43.2 trails upstream 2.44.0, whose
-# wrapper changes can break source packages. Use a future pinned release flow.
-# spicetify-cli
-
-# Candidates to evaluate later:
-# wlogout
+# Theme patcher used by scripts/setup-spicetify.sh. The reviewed AUR package
+# builds the generated wrapper and currently tracks the stable upstream CLI.
+spicetify-cli
