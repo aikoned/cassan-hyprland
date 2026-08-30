@@ -575,6 +575,11 @@ if rg -n '\bpseudotile[[:space:]]*=' "$repo_dir/hypr" -g '*.lua'; then
   exit 1
 fi
 
+rg -q '^[[:space:]]*scale = 1,$' "$repo_dir/hypr/monitor.lua" || {
+  printf 'the monitor fallback must use the requested 1x display scale\n' >&2
+  exit 1
+}
+
 rg -Fq 'hl.bind(mod .. " + P", hl.dsp.window.pseudo())' "$repo_dir/hypr/bind.lua" || {
   printf 'the Super+P pseudotile dispatcher binding is missing\n' >&2
   exit 1
