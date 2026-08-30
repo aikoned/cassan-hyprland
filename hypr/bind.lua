@@ -25,6 +25,7 @@ hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | swappy -
 
 hl.bind(mod .. " + W", hl.dsp.exec_cmd(config_home .. [[/waybar/scripts/theme-switcher.sh" next]]))
 hl.bind(mod .. " + SHIFT + W", hl.dsp.exec_cmd(config_home .. [[/waybar/scripts/theme-switcher.sh" list]]))
+hl.bind(mod .. " + CTRL + W", hl.dsp.exec_cmd(config_home .. [[/waybar/scripts/theme-switcher.sh" auto-toggle]]))
 hl.bind(mod .. " + SHIFT + E", hl.dsp.exec_cmd("thunar"))
 hl.bind(mod .. " + SHIFT + X", hl.dsp.exec_cmd(config_home .. [[/wlogout/launch.sh"]]))
 hl.bind(mod .. " + CTRL + R", hl.dsp.exec_cmd(config_home .. [[/waybar/start.sh" --replace]]))

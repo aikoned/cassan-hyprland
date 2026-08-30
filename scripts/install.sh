@@ -62,7 +62,6 @@ config_names=(
   wlogout
   yazi
   zathura
-  vesktop
   gtk-3.0
   gtk-4.0
   qt6ct
@@ -73,6 +72,34 @@ if [[ ! -r /etc/arch-release ]] || ! command -v pacman >/dev/null 2>&1; then
   printf 'This installer targets Arch Linux and Arch-based systems.\n' >&2
   exit 1
 fi
+
+if (( EUID == 0 )); then
+  printf 'Run this installer as your desktop user, without sudo.\n' >&2
+  exit 1
+fi
+
+require_apps_closed() {
+  local status app
+  local -a query
+  for app in spotify vesktop electron-vesktop; do
+    query=(pgrep -i -x "$app")
+    if [[ "$app" == electron-vesktop ]]; then
+      query=(pgrep -f '(^|[[:space:]])/usr/lib/vesktop/app\.asar([[:space:]]|$)')
+    fi
+    if "${query[@]}" >/dev/null 2>&1; then
+      printf 'Close Spotify and Vesktop before installing this update. Nothing was changed.\n' >&2
+      exit 1
+    else
+      status=$?
+      if (( status != 1 )); then
+        printf 'Could not check running applications; pgrep from procps-ng is required.\n' >&2
+        exit 1
+      fi
+    fi
+  done
+}
+
+require_apps_closed
 
 read_packages() {
   sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$1"
@@ -86,7 +113,10 @@ link_sources=(
   assets-profile
   applications/yazi.desktop
   spotify-launcher.conf
+  scripts
   themes
+  vesktop
+  spicetify/Extensions/hyprland-dots-theme.js
   spicetify/Themes/Comfy
   spicetify/Themes/marketplace
   spicetify/Themes/text
@@ -249,6 +279,16 @@ ensure_real_directory() {
 ensure_real_directory "$config_dir/spicetify" "config/spicetify"
 ensure_real_directory "$config_dir/spicetify/Themes" "config/spicetify/Themes"
 ensure_real_directory "$config_dir/spicetify/CustomApps" "config/spicetify/CustomApps"
+if [[ -e "$config_dir/spicetify/Extensions" || -L "$config_dir/spicetify/Extensions" ]]; then
+  if [[ ! -d "$config_dir/spicetify/Extensions" ]]; then
+    printf 'Spicetify Extensions must be a directory; existing path was left unchanged.\n' >&2
+    exit 1
+  fi
+else
+  mkdir -p "$config_dir/spicetify/Extensions"
+fi
+
+python3 "$repo_dir/scripts/sync-app-themes.py" --install-vesktop
 
 for name in "${config_names[@]}"; do
   link_path "$repo_dir/$name" "$config_dir/$name" "config/$name"
@@ -285,9 +325,14 @@ link_path \
   "$repo_dir/spicetify/CustomApps/marketplace" \
   "$config_dir/spicetify/CustomApps/marketplace" \
   "config/spicetify/CustomApps/marketplace"
+link_path \
+  "$repo_dir/spicetify/Extensions/hyprland-dots-theme.js" \
+  "$config_dir/spicetify/Extensions/hyprland-dots-theme.js" \
+  "config/spicetify/Extensions/hyprland-dots-theme.js"
 
 link_path "$repo_dir/assets" "$config_dir/hyprland-dots/assets" "config/hyprland-dots-assets"
 link_path "$repo_dir/assets-profile" "$config_dir/hyprland-dots/assets-profile" "config/hyprland-dots-assets-profile"
+link_path "$repo_dir/scripts" "$config_dir/hyprland-dots/scripts" "config/hyprland-dots-scripts"
 
 if [[ "$link_shell" == true ]]; then
   link_path "$repo_dir/.zshrc" "$HOME/.zshrc" "home/.zshrc"
@@ -295,9 +340,34 @@ fi
 
 "$repo_dir/waybar/scripts/theme-switcher.sh" prepare
 
+app_setup_incomplete=false
+if ! python3 "$repo_dir/scripts/setup-firefox-theme.py"; then
+  printf 'warning: Firefox needs ./scripts/setup-firefox-theme.py after resolving the error above.\n' >&2
+  app_setup_incomplete=true
+fi
+
+if [[ -x /usr/bin/spicetify && ( -f "$config_dir/spicetify/config-xpui.ini" || -f "$config_dir/spotify/prefs" ) ]]; then
+  if ! "$repo_dir/scripts/setup-spicetify.sh"; then
+    printf 'warning: Spotify text theming needs ./scripts/setup-spicetify.sh.\n' >&2
+    app_setup_incomplete=true
+  fi
+else
+  printf 'Spotify: after its first launch, close it and run ./scripts/setup-spicetify.sh.\n'
+fi
+
+if ! python3 "$repo_dir/scripts/sync-app-themes.py" --verbose; then
+  app_setup_incomplete=true
+fi
+
 "$repo_dir/scripts/check.sh"
 
 if [[ -n "$backup_dir" && -d "$backup_dir" ]]; then
   printf '\nBackups: %s\n' "$backup_dir"
+fi
+printf '\nAutomatic wallpaper switching: 08:00–20:00 After School, 20:00–08:00 Reze, local time.\n'
+printf 'Click AUTO/MAN in Waybar or press Super+Ctrl+W to toggle; manual wallpaper choices pause it.\n'
+if [[ "$app_setup_incomplete" == true ]]; then
+  printf '\nDesktop files are installed, but app theme setup needs attention; see the warnings above.\n' >&2
+  exit 1
 fi
 printf '\nInstallation complete. Log out and start a new Hyprland session.\n'

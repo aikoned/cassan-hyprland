@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" class="spotify__container--is-desktop spotify__os--is-linux">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotify text theme — synthetic layout fixture</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--spice-text); background: var(--spice-main); }
+  button, input { color: var(--text-base, var(--spice-text)); background: var(--background-base, var(--spice-main)); border: 0; padding: 6px 10px; }
+  button { cursor: pointer; min-height: 32px; }
+  button:disabled { opacity: .5; cursor: default; }
+  svg { width: 20px; height: 20px; fill: currentColor; vertical-align: middle; }
+  #fixture-toolbar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 4px 12px; border-bottom: 1px solid var(--spice-border-inactive); }
+  #fixture-toolbar strong { margin-right: auto; font-size: 12px; }
+  #fixture-toolbar button { font-size: 12px !important; border: 1px solid var(--spice-border-inactive); }
+  .Root__top-container { display: grid; grid-template: "nav nav nav" 64px "lib main side" minmax(0, 1fr) "play play play" auto / 72px minmax(0, 1fr) 280px; height: calc(100dvh - 44px); }
+  .Root__top-container[data-library="expanded"] { grid-template-columns: 220px minmax(0, 1fr) 280px; }
+  .Root__top-container[data-sidebar="closed"] { grid-template: "nav nav" 64px "lib main" minmax(0, 1fr) "play play" auto / 72px minmax(0, 1fr); }
+  .Root__top-container[data-sidebar="closed"][data-library="expanded"] { grid-template-columns: 220px minmax(0, 1fr); }
+  .Root__globalNav { grid-area: nav; display: flex; align-items: center; gap: 12px; border-radius: 10px; }
+  .main-globalNav-searchContainer { flex: 1; max-width: 600px; }
+  .main-globalNav-searchContainer input { width: 100%; height: 36px; border-radius: 99px; }
+  .Root__nav-bar { grid-area: lib; }
+  .main-yourLibraryX-entryPoints, .main-yourLibraryX-libraryContainer { height: 100%; }
+  .main-yourLibraryX-libraryContainer { display: flex; flex-direction: column; }
+  .main-yourLibraryX-libraryRootlist { flex: 1; overflow: auto; }
+  .main-yourLibraryX-listItem { display: flex; width: 100%; gap: 10px; align-items: center; padding: 8px; text-align: left; }
+  .main-yourLibraryX-listItem img { width: 40px; height: 40px; object-fit: cover; }
+  .main-yourLibraryX-listItem span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  [data-library="collapsed"] .main-yourLibraryX-listItem span { display: none; }
+  .Root__main-view { grid-area: main; border-radius: 10px; overflow: hidden; }
+  .main-view-container__scroll-node { height: 100%; overflow: auto; padding: 16px; }
+  .main-home-filterChipsSection { display: flex; gap: 8px; padding: 8px 0 12px; }
+  .main-home-filterChipsSection button { border-radius: 20px; }
+  .main-entityHeader-container { display: flex; align-items: center; gap: 16px; }
+  .main-entityHeader-container h1 { margin: 0 0 4px; }
+  .main-entityHeader-container p { color: var(--spice-subtext); margin: 0; }
+  .main-trackList-trackListRow, .main-trackList-trackListHeader { display: grid; grid-template-columns: 28px minmax(140px, 2fr) minmax(100px, 1fr) 48px; gap: 10px; align-items: center; padding: 6px; min-width: 420px; min-height: 48px; }
+  .main-trackList-trackListHeader { position: sticky; top: 0; z-index: 1; min-height: 36px; border-bottom: 1px solid var(--spice-border-inactive); }
+  .track-title { display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .track-title img { width: 36px; height: 36px; object-fit: cover; }
+  .track-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track-album { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--spice-subtext); }
+  .Root__right-sidebar { grid-area: side; min-height: 0; border-radius: 10px; }
+  .Root__right-sidebar aside { height: 100%; overflow: auto; padding: 14px; }
+  [data-sidebar="closed"] .Root__right-sidebar { display: none; }
+  .sidebar-art { width: 100%; aspect-ratio: 1; object-fit: cover; margin: 12px 0; }
+  .main-nowPlayingView-section { margin: 12px 0; }
+  .main-nowPlayingView-section p { color: var(--spice-subtext); }
+  .main-nowPlayingBar-container { grid-area: play; border-radius: 10px; }
+  .main-nowPlayingBar-nowPlayingBar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .main-nowPlayingBar-left { display: flex; align-items: center; gap: 12px; width: 28%; min-width: 0; }
+  .main-nowPlayingBar-left img { width: 44px; height: 44px; object-fit: cover; }
+  .main-nowPlayingBar-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .main-nowPlayingBar-center { flex: 1; position: relative; max-width: 600px; }
+  .player-controls { position: relative; }
+  .player-controls__buttons { display: flex; justify-content: center; gap: 8px; }
+  .main-nowPlayingBar-extraControls { display: flex; align-items: center; justify-content: end; width: 28%; }
+  .main-nowPlayingBar-extraControls input { width: 80px; }
+  .playback-bar { display: flex; align-items: center; gap: 8px; max-width: 600px; }
+  .playback-bar > div:has(> [data-testid="playback-progressbar"]) { flex: 1; }
+  [data-testid="playback-progressbar"] { padding-block: 4px; cursor: pointer; }
+  [data-testid="progress-bar"] { height: var(--progress-bar-height, 4px); border-radius: var(--progress-bar-radius, 4px); background: var(--bg-color); }
+  [data-testid="progress-bar"] > div { width: 42%; height: 100%; background: var(--fg-color); }
+  .main-connectBar-connectBar { padding: 3px 10px; text-align: right; }
+  .main-connectBar-connectBar button { padding: 0; min-height: 24px; }
+  .GenericModal { width: min(450px, 90vw); padding: 24px; }
+  .GenericModal::backdrop { background: #0008; }
+  #fixture-menu { position: fixed; z-index: 20; top: 114px; right: 24px; padding: 8px; min-width: 180px; }
+  #fixture-menu button { display: block; width: 100%; text-align: left; }
+  .npv-main-container { height: calc(100dvh - 44px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+  .npv-main-container img { width: min(40vh, 300px); aspect-ratio: 1; object-fit: cover; }
+  .npv-main-container .playback-bar { width: min(80vw, 600px); }
+  [hidden] { display: none !important; }
+</style>
+<link id="production-theme" rel="stylesheet" href="../../spicetify/Themes/text/user.css">
+<body class="encore-dark-theme">
+<div id="fixture-toolbar">
+  <strong>Synthetic CSS fixture · not Spotify</strong>
+  <button id="palette-toggle">Palette: After School</button>
+  <button id="library-toggle">Expand library</button>
+  <button id="sidebar-toggle">Close sidebar</button>
+  <button id="fullscreen-toggle">Fullscreen fixture</button>
+</div>
+<div class="Root__top-container" data-library="collapsed" data-sidebar="open">
+  <nav class="Root__globalNav" aria-label="Navigation">
+    <button aria-label="Back" disabled>‹</button><button aria-label="Forward">›</button>
+    <button aria-label="Home"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-7H9v7H3z"/></svg></button>
+    <div class="main-globalNav-searchContainer"><form><input class="main-topBar-searchBar" placeholder="What do you want to play?" aria-label="Search"></form></div>
+    <button id="menu-button" aria-label="Open options">•••</button>
+    <button id="modal-button">Settings fixture</button>
+  </nav>
+  <nav class="Root__nav-bar" aria-label="Library"><div class="main-yourLibraryX-entryPoints"><div class="main-yourLibraryX-libraryContainer">
+    <button aria-label="Create playlist">＋</button><div class="main-yourLibraryX-libraryRootlist" id="library-items"></div>
+  </div></div></nav>
+  <main class="Root__main-view"><div class="main-view-container"><div class="main-view-container__scroll-node">
+    <div class="main-home-filterChipsSection"><button class="encore-inverted-light-set" aria-pressed="true">All</button><button class="encore-base-set" aria-pressed="false">Music</button><button class="encore-base-set" aria-pressed="false">Podcasts</button><button class="encore-bright-accent-set">Play</button></div>
+    <div class="main-entityHeader-container"><div class="main-entityHeader-title"><h1>Evening listening</h1><p>Playlist · long titles and multilingual metadata</p></div></div>
+    <div class="main-trackList-trackListHeader"><span>#</span><span>Title</span><span>Album</span><span>Time</span></div>
+    <div id="track-list"></div>
+  </div></div></main>
+  <div class="Root__right-sidebar"><aside aria-label="Now playing"><div class="main-nowPlayingView-mainWrapper">
+    <span data-encore-id="type">Evening listening</span>
+    <img class="sidebar-art" src="../../assets/after_school_stroll_gruvbox.png" alt="Sample artwork from the bundled wallpaper">
+    <h3 data-encore-id="type">A walk after school</h3><p data-encore-id="type">Sample artist</p>
+    <section class="main-nowPlayingView-section"><h4 data-encore-id="type">Credits</h4><p>Sample artist<br>Main artist</p><button>Follow</button></section>
+    <section class="main-nowPlayingView-section"><h4 data-encore-id="type">Next in queue</h4><p>夜の散歩 — An exceptionally long track title</p></section>
+  </div></aside></div>
+  <footer class="main-nowPlayingBar-container"><div class="main-nowPlayingBar-nowPlayingBar">
+    <div class="main-nowPlayingBar-left"><img src="../../assets/after_school_stroll_gruvbox.png" alt="Current album artwork"><span>A walk after school<br>Sample artist</span></div>
+    <div class="main-nowPlayingBar-center"><div class="player-controls"><div class="player-controls__buttons">
+      <button aria-label="Shuffle" aria-checked="true">⇄</button>
+      <button aria-label="Previous" data-testid="control-button-skip-back"><svg viewBox="0 0 24 24"><path d="M5 4h3v16H5zm14 0v16L8 12z"/></svg></button>
+      <button aria-label="Pause" data-testid="control-button-playpause"><span><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg></span></button>
+      <button aria-label="Next" data-testid="control-button-skip-forward"><svg viewBox="0 0 24 24"><path d="M16 4h3v16h-3zM5 4l11 8L5 20z"/></svg></button>
+      <button aria-label="Repeat" aria-checked="false">↻</button>
+    </div><div class="playback-bar"><span class="playback-bar__progress-time-elapsed">1:25</span><div><div data-testid="playback-progressbar" role="slider" tabindex="0" aria-label="Playback position" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100"><div data-testid="progress-bar"><div></div></div></div></div><span class="main-playbackBarRemainingTime-container">3:24</span></div></div></div>
+    <div class="main-nowPlayingBar-extraControls"><button aria-label="Queue">☷</button><label for="volume">Vol</label><input type="range" id="volume" min="0" max="100" value="60"></div>
+  </div><div class="main-connectBar-connectBar"><button id="connect-button">Playing on this computer · Devices</button></div></footer>
+</div>
+<section class="npv-main-container" hidden><img src="../../assets/after_school_stroll_gruvbox.png" alt="Fullscreen artwork"><h2>Fullscreen / podcast control fixture</h2><div class="player-controls__buttons"><button data-testid="control-button-seek-back-15" aria-label="Back 15 seconds"><svg viewBox="0 0 24 24"><path d="M4 4v8h8L9 9a6 6 0 1 1 0 8l-2 2A9 9 0 1 0 7 7z"/></svg>15</button><button data-testid="control-button-playpause" aria-label="Play"><svg viewBox="0 0 24 24"><path d="m6 3 15 9-15 9z"/></svg></button><button data-testid="control-button-seek-forward-15" aria-label="Forward 15 seconds">15<svg viewBox="0 0 24 24"><path d="M20 4v8h-8l3-3a6 6 0 1 0 0 8l2 2A9 9 0 1 1 17 7z"/></svg></button></div><div class="playback-bar"><span>0:24</span><div><div data-testid="playback-progressbar" tabindex="0" role="slider" aria-label="Fullscreen playback position"><div data-testid="progress-bar"><div></div></div></div></div><span>42:10</span></div></section>
+<div class="main-contextMenu-menu" id="fixture-menu" hidden><button class="main-contextMenu-menuItemButton" role="menuitem">Add to queue</button><button class="main-contextMenu-menuItemButton" role="menuitem">Go to artist</button></div>
+<dialog class="GenericModal"><h2>Settings fixture</h2><label>Sample setting <input type="checkbox" checked></label><p>This dialog checks local theme colors and keyboard focus.</p><button id="close-modal">Close</button></dialog>
+<script>
+  const fixtureRoot = document.querySelector('.Root__top-container');
+  const artwork = '../../assets/after_school_stroll_gruvbox.png';
+  const titles = ['A walk after school', '夜の散歩 — A very long title that should stay inside its panel', 'Quiet streets', 'After the rain', '夕焼け', 'Late train home'];
+  for (let index = 0; index < 22; index++) {
+    const row = document.createElement('div');
+    row.className = 'main-trackList-trackListRow';
+    row.tabIndex = 0;
+    row.setAttribute('aria-selected', String(index === 1));
+    row.innerHTML = '<span>' + (index + 1) + '</span><div class="track-title"><img src="' + artwork + '" alt="Album artwork"><span data-encore-id="type">' + titles[index % titles.length] + '</span></div><span class="track-album">Evening listening</span><span>3:24</span>';
+    document.getElementById('track-list').append(row);
+    if (index < 12) {
+      const item = document.createElement('button');
+      item.className = 'main-yourLibraryX-listItem';
+      item.innerHTML = '<img src="' + artwork + '" alt="Playlist artwork"><span>Playlist ' + (index + 1) + '</span>';
+      document.getElementById('library-items').append(item);
+    }
+  }
+  let theme = 'after-school';
+  const tokenMap = {accent:'focus', 'accent-active':'focus_alt', 'accent-inactive':'disabled', banner:'focus', 'border-active':'focus', 'border-inactive':'border', header:'text', highlight:'panel_alt', main:'background', notification:'focus', 'notification-error':'urgent', subtext:'text_secondary', text:'text'};
+  async function palette() {
+    const source = await (await fetch('../../themes/' + theme + '.toml')).text();
+    const colors = Object.fromEntries([...source.matchAll(/^(\w+) = "(#[0-9A-Fa-f]{6})"$/gm)].map(match => [match[1], match[2]]));
+    for (const [token, key] of Object.entries(tokenMap)) {
+      const color = colors[key];
+      document.documentElement.style.setProperty('--spice-' + token, color);
+      document.documentElement.style.setProperty('--spice-rgb-' + token, [1, 3, 5].map(start => parseInt(color.slice(start, start + 2), 16)).join(', '));
+    }
+    document.documentElement.dataset.palette = theme;
+    document.getElementById('palette-toggle').textContent = 'Palette: ' + (theme === 'reze' ? 'Reze' : 'After School');
+  }
+  document.getElementById('palette-toggle').onclick = () => { theme = theme === 'reze' ? 'after-school' : 'reze'; palette(); };
+  document.getElementById('library-toggle').onclick = event => { fixtureRoot.dataset.library = fixtureRoot.dataset.library === 'expanded' ? 'collapsed' : 'expanded'; event.target.textContent = fixtureRoot.dataset.library === 'expanded' ? 'Collapse library' : 'Expand library'; };
+  document.getElementById('sidebar-toggle').onclick = event => { fixtureRoot.dataset.sidebar = fixtureRoot.dataset.sidebar === 'open' ? 'closed' : 'open'; event.target.textContent = fixtureRoot.dataset.sidebar === 'open' ? 'Close sidebar' : 'Open sidebar'; };
+  document.getElementById('fullscreen-toggle').onclick = () => { fixtureRoot.hidden = !fixtureRoot.hidden; document.querySelector('.npv-main-container').hidden = !fixtureRoot.hidden; };
+  document.getElementById('menu-button').onclick = () => { const menu = document.getElementById('fixture-menu'); menu.hidden = !menu.hidden; };
+  document.getElementById('modal-button').onclick = () => document.querySelector('dialog').showModal();
+  document.getElementById('close-modal').onclick = () => document.querySelector('dialog').close();
+  document.getElementById('connect-button').onclick = event => { event.target.textContent = 'Device chooser interaction received'; };
+  document.querySelector('form').onsubmit = event => event.preventDefault();
+  for (const control of document.querySelectorAll('[role="slider"]')) control.onkeydown = event => { if (['ArrowRight', 'ArrowLeft'].includes(event.key)) { control.setAttribute('aria-valuenow', String(Math.max(0, Math.min(100, Number(control.getAttribute('aria-valuenow') || 42) + (event.key === 'ArrowRight' ? 1 : -1))))); event.preventDefault(); } };
+  palette();
+</script>
+</body>
+</html>

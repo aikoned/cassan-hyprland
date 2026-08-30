@@ -9,6 +9,7 @@ theme_root="$cache_dir/themes"
 active_theme="$cache_dir/active-theme"
 legacy_wallpaper="$cache_dir/current-wallpaper"
 lock_file="$cache_dir/theme-switcher.lock"
+schedule="$repo_dir/scripts/theme-schedule.py"
 after_school=$(realpath "$repo_dir/assets/after_school_stroll_gruvbox.png")
 reze=$("$repo_dir/scripts/prepare-private-wallpapers.sh")
 reze=$(realpath "$reze")
@@ -26,6 +27,7 @@ lock_switcher() {
   fi
   exec 9>"$lock_file"
   flock 9
+  "$schedule" mode >/dev/null
 }
 
 atomic_symlink() {
@@ -57,19 +59,19 @@ PY
 }
 
 ensure_awww() {
-  if awww query >/dev/null 2>&1; then
+  if awww query 9>&- >/dev/null 2>&1; then
     return
   fi
 
   awww-daemon 9>&- >/dev/null 2>&1 &
   for _ in {1..30}; do
-    if awww query >/dev/null 2>&1; then
+    if awww query 9>&- >/dev/null 2>&1; then
       return
     fi
     sleep 0.1
   done
 
-  notify-send "Theme Switcher" "awww-daemon did not become ready"
+  notify-send "Theme Switcher" "awww-daemon did not become ready" 9>&- || true
   exit 1
 }
 
@@ -88,6 +90,14 @@ current_index() {
     done
   fi
 
+  selected=$("$schedule" selected)
+  for index in "${!themes[@]}"; do
+    if [[ "${themes[$index]}" == "$selected" ]]; then
+      printf '%s\n' "$index"
+      return
+    fi
+  done
+
   if [[ -L "$legacy_wallpaper" ]]; then
     target=$(realpath "$legacy_wallpaper" 2>/dev/null || true)
   fi
@@ -102,6 +112,26 @@ current_index() {
   printf '0\n'
 }
 
+index_for_slug() {
+  local index
+  for index in "${!themes[@]}"; do
+    if [[ "${themes[$index]}" == "$1" ]]; then
+      printf '%s\n' "$index"
+      return
+    fi
+  done
+  printf 'unknown wallpaper theme: %s\n' "$1" >&2
+  return 1
+}
+
+desired_index() {
+  if [[ $("$schedule" mode) == auto ]]; then
+    index_for_slug "$("$schedule" target)"
+  else
+    index_for_slug "$("$schedule" selected)"
+  fi
+}
+
 theme_is_complete() {
   local path=$1
   local required
@@ -112,7 +142,10 @@ theme_is_complete() {
     hypr.lua \
     hyprlock.conf \
     kitty.conf \
+    pywalfox.json \
+    spotify-palette.json \
     swaync.css \
+    vesktop.css \
     waybar.css \
     wofi.css \
     wlogout.css \
@@ -132,14 +165,17 @@ render_theme() {
   local slug=${themes[$index]}
   local generation
 
-  generation=$(mktemp -d "$theme_root/.${slug}.XXXXXX")
+  generation=$(mktemp -d "$theme_root/.${slug}.XXXXXX") || return 1
   if ! python3 "$repo_dir/scripts/render-theme.py" \
     --theme "$slug" \
     --output "$generation"; then
     rm -rf -- "$generation"
     return 1
   fi
-  ln -s -- "${wallpapers[$index]}" "$generation/wallpaper"
+  if ! ln -s -- "${wallpapers[$index]}" "$generation/wallpaper"; then
+    rm -rf -- "$generation"
+    return 1
+  fi
   if ! theme_is_complete "$generation"; then
     rm -rf -- "$generation"
     return 1
@@ -160,9 +196,29 @@ activate_index() {
   local index=$1
   local theme_target
 
-  ensure_theme "$index"
-  theme_target=$(realpath "$theme_root/${themes[$index]}")
+  ensure_theme "$index" || return 1
+  theme_target=$(realpath "$theme_root/${themes[$index]}") || return 1
   atomic_symlink "$theme_target" "$active_theme"
+}
+
+publish_selection() {
+  local index=$1
+  local state_action=${2:-remember}
+  local previous_theme=""
+
+  if [[ -L "$active_theme" ]]; then
+    previous_theme=$(readlink "$active_theme")
+  fi
+  activate_index "$index" || return 1
+  if ! "$schedule" "$state_action" "${themes[$index]}"; then
+    if [[ -n "$previous_theme" ]]; then
+      atomic_symlink "$previous_theme" "$active_theme"
+    elif [[ -L "$active_theme" ]]; then
+      unlink "$active_theme"
+    fi
+    printf 'Could not save the wallpaper selection; restored the previous theme pointer.\n' >&2
+    return 1
+  fi
 }
 
 cleanup_generations() {
@@ -203,26 +259,34 @@ prepare_themes() {
   local index
   local selected
 
-  selected=$(current_index)
+  selected=$(desired_index)
 
   for index in "${!themes[@]}"; do
     render_theme "$index"
   done
-  activate_index "$selected"
+  publish_selection "$selected"
   cleanup_generations
+  sync_app_themes
+}
+
+sync_app_themes() {
+  if ! python3 "$repo_dir/scripts/sync-app-themes.py" 9>&-; then
+    printf 'Some application colors could not be updated; see the warnings above.\n' >&2
+  fi
 }
 
 reload_desktop() {
-  hyprctl reload >/dev/null 2>&1 || true
-  pkill -SIGUSR2 -x waybar >/dev/null 2>&1 || true
-  pkill -SIGUSR2 -x btop >/dev/null 2>&1 || true
-  pkill -SIGUSR1 -x kitty >/dev/null 2>&1 || true
-  swaync-client -rs >/dev/null 2>&1 || true
+  hyprctl reload 9>&- >/dev/null 2>&1 || true
+  pkill -SIGUSR2 -x waybar 9>&- >/dev/null 2>&1 || true
+  pkill -SIGUSR2 -x btop 9>&- >/dev/null 2>&1 || true
+  pkill -SIGUSR1 -x kitty 9>&- >/dev/null 2>&1 || true
+  swaync-client -rs 9>&- >/dev/null 2>&1 || true
 }
 
 apply_index() {
   local index=$1
   local notify=${2:-yes}
+  local state_action=${3:-remember}
   local positions=(center top bottom left right top-left top-right bottom-left bottom-right)
   local position=${positions[RANDOM % ${#positions[@]}]}
   local previous_wallpaper=""
@@ -240,18 +304,19 @@ apply_index() {
     --transition-type grow \
     --transition-fps 60 \
     --transition-duration 2 \
-    --transition-pos "$position"
-  if ! activate_index "$index"; then
+    --transition-pos "$position" 9>&-
+  if ! publish_selection "$index" "$state_action"; then
     if [[ -n "$previous_wallpaper" ]]; then
-      awww img "$previous_wallpaper" --transition-type none >/dev/null 2>&1 || true
+      awww img "$previous_wallpaper" --transition-type none 9>&- >/dev/null 2>&1 || true
     fi
     return 1
   fi
   cleanup_generations
+  sync_app_themes
   reload_desktop
 
   if [[ "$notify" == yes ]]; then
-    notify-send "Theme Switcher" "Applied: ${labels[$index]}"
+    notify-send "Theme Switcher" "Applied: ${labels[$index]}" 9>&- || true
   fi
 }
 
@@ -263,7 +328,7 @@ case "${1:-next}" in
   next)
     lock_switcher
     index=$(( ($(current_index) + 1) % ${#wallpapers[@]} ))
-    apply_index "$index"
+    apply_index "$index" yes manual
     ;;
   random)
     lock_switcher
@@ -272,11 +337,42 @@ case "${1:-next}" in
     if (( ${#wallpapers[@]} > 1 && index == current )); then
       index=$(( (index + 1) % ${#wallpapers[@]} ))
     fi
-    apply_index "$index"
+    apply_index "$index" yes manual
     ;;
   restore)
     lock_switcher
-    apply_index "$(current_index)" no
+    apply_index "$(desired_index)" no
+    ;;
+  scheduled)
+    lock_switcher
+    [[ $("$schedule" mode) == auto ]] || exit 0
+    index=$(desired_index)
+    if [[ $(current_index) != "$index" ]] || ! theme_is_complete "$active_theme"; then
+      apply_index "$index" no
+    fi
+    ;;
+  auto-on|auto-off|auto-toggle)
+    lock_switcher
+    mode=$("$schedule" mode)
+    if [[ "$1" == auto-off || ( "$1" == auto-toggle && "$mode" == auto ) ]]; then
+      index=$(current_index)
+      "$schedule" manual "${themes[$index]}"
+      notify-send "Theme Schedule" "Automatic switching off; keeping ${labels[$index]}" 9>&- || true
+    else
+      index=$(index_for_slug "$("$schedule" target)")
+      if [[ $(current_index) != "$index" ]] || ! theme_is_complete "$active_theme"; then
+        apply_index "$index" no automatic
+      else
+        "$schedule" automatic "${themes[$index]}"
+      fi
+      notify-send "Theme Schedule" "Automatic day/night switching on" 9>&- || true
+    fi
+    ;;
+  set)
+    [[ $# == 2 ]] || { printf 'set requires after-school or reze\n' >&2; exit 2; }
+    lock_switcher
+    index=$(index_for_slug "$2")
+    apply_index "$index" yes manual
     ;;
   list)
     selected=$(
@@ -288,13 +384,13 @@ case "${1:-next}" in
     for index in "${!labels[@]}"; do
       if [[ "${labels[$index]}" == "$selected" ]]; then
         lock_switcher
-        apply_index "$index"
+        apply_index "$index" yes manual
         exit 0
       fi
     done
     ;;
   *)
-    printf 'usage: %s {prepare|next|random|restore|list}\n' "${0##*/}" >&2
+    printf 'usage: %s {prepare|next|random|restore|list|set THEME|auto-on|auto-off|auto-toggle|scheduled}\n' "${0##*/}" >&2
     exit 2
     ;;
 esac

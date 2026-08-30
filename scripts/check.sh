@@ -52,11 +52,24 @@ required_files=(
   scripts/migrate-cassan.py
   scripts/prepare-private-wallpapers.sh
   scripts/render-theme.py
+  scripts/setup-firefox-theme.py
   scripts/setup-spicetify.sh
+  scripts/sync-app-themes.py
+  scripts/theme-schedule.py
   scripts/update.sh
   spotify-launcher.conf
   tests/test_migrate_cassan.py
+  tests/test_memory_pressure.py
   tests/test_prepare_private_wallpapers.py
+  tests/test_setup_firefox_theme.py
+  tests/test_setup_spicetify.py
+  tests/test_spotify_theme.js
+  tests/test_spotify_text_theme.py
+  tests/test_sync_app_themes.py
+  tests/test_theme_schedule.py
+  tests/test_theme_schedule_integration.py
+  tests/test_waybar_memory_tray.py
+  spicetify/Extensions/hyprland-dots-theme.js
   spicetify/CustomApps/marketplace/manifest.json
   spicetify/CustomApps/marketplace/release.json
   spicetify/Themes/Comfy/color.ini
@@ -65,12 +78,15 @@ required_files=(
   spicetify/Themes/Comfy/theme.js
   spicetify/Themes/Comfy/theme.script.js
   spicetify/Themes/Comfy/user.css
+  spicetify/Themes/text/color.ini
+  spicetify/Themes/text/user.css
   swappy/config
   swaync/config.json
   swaync/start.sh
   swaync/style.css
   themes/after-school.toml
   themes/reze.toml
+  themes/schedule.toml
   vesktop/settings.json
   vesktop/settings/settings.json
   vesktop/themes/midnight-discord.css
@@ -80,6 +96,7 @@ required_files=(
   waybar/style.css
   waybar/scripts/bluetooth_status.sh
   waybar/scripts/clipboard_menu.sh
+  waybar/scripts/memory-pressure.py
   waybar/scripts/powerprofile.sh
   waybar/scripts/theme-switcher.sh
   wlogout/icons/hibernate.png
@@ -177,6 +194,12 @@ except ModuleNotFoundError:
 root = pathlib.Path(sys.argv[1])
 ast.parse((root / "scripts/migrate-cassan.py").read_text(encoding="utf-8"))
 ast.parse((root / "scripts/render-theme.py").read_text(encoding="utf-8"))
+for script in (root / "scripts").glob("*.py"):
+    ast.parse(script.read_text(encoding="utf-8"))
+    if script.name == "theme-schedule.py" and not script.stat().st_mode & 0o111:
+        raise ValueError(f"script is not executable: {script}")
+for script in (root / "waybar/scripts").glob("*.py"):
+    ast.parse(script.read_text(encoding="utf-8"))
 for relative in (
     "waybar/config.jsonc",
     "swaync/config.json",
@@ -276,6 +299,7 @@ for relative in (
     "spotify-launcher.conf",
     "themes/after-school.toml",
     "themes/reze.toml",
+    "themes/schedule.toml",
 ):
     with (root / relative).open("rb") as handle:
         tomllib.load(handle)
@@ -376,6 +400,7 @@ with tempfile.TemporaryDirectory() as temporary:
         for filename in (
             "btop/noctalia.theme", "current-theme", "hypr.lua", "hyprlock.conf",
             "kitty.conf", "swaync.css", "waybar.css", "wofi.css", "wlogout.css",
+            "pywalfox.json", "spotify-palette.json", "vesktop.css",
         ):
             if not (output / filename).is_file():
                 raise FileNotFoundError(f"theme renderer omitted {slug}/{filename}")
@@ -390,6 +415,18 @@ with tempfile.TemporaryDirectory() as temporary:
             raise ValueError(f"Btop output does not contain the {slug} focus color")
         if focus not in (output / "kitty.conf").read_text(encoding="utf-8"):
             raise ValueError(f"Kitty output does not contain the {slug} focus color")
+        if focus not in (output / "vesktop.css").read_text(encoding="utf-8"):
+            raise ValueError(f"Vesktop output does not contain the {slug} focus color")
+        spotify_palette = json.loads((output / "spotify-palette.json").read_text(encoding="utf-8"))
+        if spotify_palette != {"schema": 1, "theme": slug, "colors": palette["colors"]}:
+            raise ValueError(f"Spotify output does not match the {slug} palette")
+        firefox_palette = json.loads((output / "pywalfox.json").read_text(encoding="utf-8"))
+        if list(firefox_palette.get("colors", {})) != [f"color{i}" for i in range(16)]:
+            raise ValueError("Pywalfox colors must remain in numeric insertion order")
+        if firefox_palette["colors"]["color10"] != focus:
+            raise ValueError(f"Firefox output does not contain the {slug} focus color")
+        if not isinstance(firefox_palette.get("wallpaper"), str):
+            raise ValueError("Firefox palette must include a wallpaper string")
         for icon in (root / "wlogout/icons").glob("*.png"):
             rendered_icon = output / "icons" / icon.name
             if not rendered_icon.is_file():
@@ -403,7 +440,7 @@ with tempfile.TemporaryDirectory() as temporary:
 
 switcher = (root / "waybar/scripts/theme-switcher.sh").read_text(encoding="utf-8")
 apply_body = switcher.split("apply_index() {", 1)[1].split("\n}", 1)[0]
-if apply_body.index("awww img") > apply_body.index('activate_index "$index"'):
+if apply_body.index("awww img") > apply_body.index('publish_selection "$index"'):
     raise ValueError("theme state must only publish after awww accepts the wallpaper")
 if "flock 9" not in switcher:
     raise ValueError("theme switching must serialize concurrent changes")
@@ -424,8 +461,8 @@ if not private_preflight < migration < first_link:
     )
 
 waybar = json.loads((root / "waybar/config.jsonc").read_text(encoding="utf-8"))
-if waybar.get("fixed-center") is not False:
-    raise ValueError("Waybar fixed-center must be disabled to prevent module overlap")
+if waybar.get("fixed-center") is not True:
+    raise ValueError("Waybar must keep the focused-window title at the display center")
 mpris = waybar.get("mpris", {})
 if (
     mpris.get("dynamic-len"),
@@ -435,8 +472,11 @@ if (
 ) != (22, 22, 22, 32):
     raise ValueError("Waybar MPRIS text limits are too wide for the laptop layout")
 window = waybar.get("hyprland/window", {})
-if window.get("max-length") != 12:
-    raise ValueError("Waybar window title is too wide for the laptop layout")
+if (window.get("min-length"), window.get("max-length")) != (12, 12):
+    raise ValueError("Waybar window title must have a stable bounded width")
+theme_mode = waybar.get("custom/theme-mode", {})
+if theme_mode.get("return-type") != "json" or "auto-toggle" not in theme_mode.get("on-click", ""):
+    raise ValueError("Waybar must expose the automatic wallpaper toggle")
 
 # Selected local themes must exist, and Vesktop must only enable bundled CSS.
 btop = (root / "btop/btop.conf").read_text(encoding="utf-8")
@@ -533,7 +573,7 @@ required_official = {
     "hypridle", "hyprland",
     "hyprlock", "hyprpolkitagent", "hyprshutdown", "kitty", "networkmanager",
     "libgepub", "libgsf", "libopenraw", "otf-font-awesome", "pipewire-pulse",
-    "poppler-glib", "power-profiles-daemon", "qt6-wayland", "qt6ct",
+    "poppler-glib", "power-profiles-daemon", "procps-ng", "python-pipx", "qt6-wayland", "qt6ct",
     "spotify-launcher", "swaync", "thunar", "thunar-archive-plugin",
     "thunar-volman", "tumbler", "util-linux", "waybar", "wl-clipboard", "wofi",
     "xdg-desktop-portal-gtk", "xdg-desktop-portal-hyprland", "xarchiver",
@@ -546,7 +586,21 @@ if missing := required_aur - aur:
 PY
 
 python3 "$repo_dir/tests/test_migrate_cassan.py"
+python3 "$repo_dir/tests/test_memory_pressure.py"
 python3 "$repo_dir/tests/test_prepare_private_wallpapers.py"
+python3 "$repo_dir/tests/test_setup_firefox_theme.py"
+python3 "$repo_dir/tests/test_setup_spicetify.py"
+python3 "$repo_dir/tests/test_spotify_text_theme.py"
+python3 "$repo_dir/tests/test_sync_app_themes.py"
+python3 "$repo_dir/tests/test_theme_schedule.py"
+python3 "$repo_dir/tests/test_theme_schedule_integration.py"
+python3 "$repo_dir/tests/test_waybar_memory_tray.py"
+
+if command -v node >/dev/null 2>&1; then
+  node --test "$repo_dir/tests/test_spotify_theme.js"
+else
+  printf 'Node is unavailable; Spotify extension unit tests skipped on this host.\n'
+fi
 
 if rg -n '/home/[^/$ ]+' \
   "$repo_dir/hypr" \
@@ -590,6 +644,7 @@ for binding in \
   'hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd(launcher))' \
   'hl.bind(mod .. " + E", hl.dsp.exec_cmd("kitty --class cassan-yazi -e yazi"))' \
   'hl.bind(mod .. " + CTRL + ESCAPE", hl.dsp.exec_cmd(task_manager))' \
+  'hl.bind(mod .. " + CTRL + W", hl.dsp.exec_cmd(config_home .. [[/waybar/scripts/theme-switcher.sh" auto-toggle]]))' \
   'hl.bind(mod .. " + Q", hl.dsp.window.close())' \
   'hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | swappy -f -]]))' \
   'hl.bind(mod .. " + CTRL + S", hl.dsp.window.move({ workspace = "special:scratch" }))'; do
@@ -628,7 +683,7 @@ done
 
 if [[ $(rg -F -c 'kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\"' \
   "$repo_dir/waybar/config.jsonc") -ne 2 ]]; then
-  printf 'Waybar CPU and RAM clicks must both use the themed Btop launcher\n' >&2
+  printf 'Waybar CPU and memory-pressure clicks must both use the themed Btop launcher\n' >&2
   exit 1
 fi
 

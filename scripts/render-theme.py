@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import re
 import tempfile
@@ -254,6 +255,76 @@ def render(slug: str, output: Path) -> None:
         f'theme[{name}]="{color}"' for name, color in btop_colors.items()
     ) + "\n"
 
+    def rgba(name: str, alpha: float) -> str:
+        value = colors[name]
+        channels = [str(int(value[index:index + 2], 16)) for index in (1, 3, 5)]
+        return f'rgba({", ".join(channels)}, {alpha})'
+
+    vesktop_colors = {
+        "text-0": colors["background"],
+        "text-1": colors["text"],
+        "text-2": colors["text"],
+        "text-3": colors["text"],
+        "text-4": colors["text_secondary"],
+        "text-5": colors["text_muted"],
+        "bg-1": colors["focus"],
+        "bg-2": colors["panel_alt"],
+        "bg-3": rgba("panel_alt", 0.9),
+        "bg-4": rgba("background", 0.9),
+        "bg-floating": rgba("panel_alt", 0.98),
+        "hover": rgba("border", 0.2),
+        "active": rgba("focus", 0.3),
+        "active-2": rgba("focus", 0.4),
+        "message-hover": rgba("panel_alt", 0.5),
+        "accent-1": colors["blue"],
+        "accent-2": colors["focus"],
+        "accent-3": colors["focus"],
+        "accent-4": colors["focus_alt"],
+        "accent-5": colors["border"],
+        "accent-new": colors["urgent"],
+        "mention": f'linear-gradient(to right, {rgba("focus", 0.1)} 40%, transparent)',
+        "mention-hover": f'linear-gradient(to right, {rgba("focus", 0.05)} 40%, transparent)',
+        "reply": f'linear-gradient(to right, {rgba("text", 0.1)} 40%, transparent)',
+        "reply-hover": f'linear-gradient(to right, {rgba("text", 0.05)} 40%, transparent)',
+        "online": colors["green"],
+        "dnd": colors["urgent"],
+        "idle": colors["focus_alt"],
+        "streaming": colors["purple"],
+        "offline": colors["text_muted"],
+        "border-light": rgba("border", 0.2),
+        "border": rgba("focus", 0.3),
+        "border-hover": colors["focus"],
+        "button-border": rgba("text", 0.1),
+    }
+    for family, name in (
+        ("red", "urgent"), ("green", "green"), ("blue", "blue"),
+        ("yellow", "focus_alt"), ("purple", "purple"),
+    ):
+        for level in range(1, 6):
+            vesktop_colors[f"{family}-{level}"] = colors[name]
+    vesktop = ":root, body, .theme-dark, .theme-light {\n" + "\n".join(
+        f"  --{name}: {value} !important;" for name, value in vesktop_colors.items()
+    ) + "\n}\n"
+
+    spotify = {"schema": 1, "theme": slug, "colors": colors}
+    cache_home = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    firefox = {
+        "wallpaper": str(cache_home / "hyprland-dots/active-theme/wallpaper"),
+        "special": {
+            "background": colors["background"],
+            "foreground": colors["text"],
+            "cursor": colors["text"],
+        },
+        "colors": {
+            f"color{index}": colors[name]
+            for index, name in enumerate((
+                "background", "urgent", "green", "focus", "blue", "purple",
+                "focus_alt", "text_secondary", "panel_alt", "urgent", "focus",
+                "focus_alt", "blue", "focus_alt", "green", "text",
+            ))
+        },
+    }
+
     atomic_write(output / "waybar.css", waybar)
     atomic_write(output / "swaync.css", swaync)
     atomic_write(output / "wofi.css", f"{wofi_definitions}\n\n{wofi_base}")
@@ -262,6 +333,9 @@ def render(slug: str, output: Path) -> None:
     atomic_write(output / "hyprlock.conf", hyprlock)
     atomic_write(output / "kitty.conf", kitty)
     atomic_write(output / "btop/noctalia.theme", btop)
+    atomic_write(output / "vesktop.css", vesktop)
+    atomic_write(output / "spotify-palette.json", json.dumps(spotify, indent=2) + "\n")
+    atomic_write(output / "pywalfox.json", json.dumps(firefox, indent=2) + "\n")
     for icon in sorted((ROOT / "wlogout/icons").glob("*.png")):
         atomic_copy(icon, output / "icons" / icon.name)
     atomic_write(output / "current-theme", f"{slug}\n")

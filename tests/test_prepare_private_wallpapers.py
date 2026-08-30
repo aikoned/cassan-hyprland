@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import pathlib
 import stat
@@ -39,6 +40,17 @@ class PrivateWallpaperTests(unittest.TestCase):
         flock = fake_bin / "flock"
         flock.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         flock.chmod(0o755)
+        for name in ("hyprctl", "pkill", "swaync-client", "notify-send"):
+            command = fake_bin / name
+            command.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            command.chmod(0o755)
+
+        schedule = root / "state/hyprland-dots/theme-schedule.json"
+        schedule.parent.mkdir(parents=True, exist_ok=True)
+        schedule.write_text(
+            json.dumps({"mode": "manual", "selected": "after-school"}),
+            encoding="utf-8",
+        )
 
         environment = os.environ.copy()
         environment.update(
@@ -146,6 +158,10 @@ class PrivateWallpaperTests(unittest.TestCase):
 
             active.unlink()
             active.symlink_to((cache / "themes/reze").resolve())
+            (root / "state/hyprland-dots/theme-schedule.json").write_text(
+                json.dumps({"mode": "manual", "selected": "reze"}),
+                encoding="utf-8",
+            )
             subprocess.run(
                 [str(SWITCHER), "prepare"],
                 check=True,

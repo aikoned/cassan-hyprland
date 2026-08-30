@@ -94,6 +94,8 @@ curl
 git
 less
 python
+python-pipx
+procps-ng
 ripgrep
 unzip
 util-linux

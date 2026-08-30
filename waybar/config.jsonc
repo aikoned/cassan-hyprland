@@ -3,7 +3,7 @@
   "position": "top",
   "height": 40,
   "spacing": 5,
-  "fixed-center": false,
+  "fixed-center": true,
   "reload_style_on_change": true,
 
   "modules-left": [
@@ -42,6 +42,7 @@
       "custom/split",
       "custom/powerprofile",
       "custom/themeswitcher",
+      "custom/theme-mode",
       "custom/closebracket"
     ]
   },
@@ -67,9 +68,15 @@
   "custom/themeswitcher": {
     "format": "",
     "tooltip": true,
-    "tooltip-format": "Left-click: next wallpaper + theme\nRight-click: random wallpaper + theme",
+    "tooltip-format": "Left-click: next wallpaper + theme\nRight-click: random wallpaper + theme\nManual selection pauses automatic switching",
     "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" next",
     "on-click-right": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" random"
+  },
+  "custom/theme-mode": {
+    "exec": "\"${XDG_CONFIG_HOME:-$HOME/.config}/hyprland-dots/scripts/theme-schedule.py\" status",
+    "return-type": "json",
+    "interval": 5,
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" auto-toggle"
   },
 
   "group/workspaces": {
@@ -129,7 +136,7 @@
   "hyprland/window": {
     "format": "{title}",
     "max-length": 12,
-    "min-length": 0,
+    "min-length": 12,
     "separate-outputs": true
   },
 
@@ -139,7 +146,7 @@
       "custom/openbracket",
       "cpu",
       "custom/split",
-      "memory",
+      "custom/memory-pressure",
       "custom/closebracket"
     ]
   },
@@ -149,10 +156,16 @@
     "interval": 2,
     "on-click": "kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\""
   },
-  "memory": {
-    "format": "RAM:{percentage}%",
-    "tooltip": false,
-    "interval": 2,
+  "custom/memory-pressure": {
+    "exec": "python3 -u \"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/memory-pressure.py\"",
+    "return-type": "json",
+    "format": "{text}",
+    "restart-interval": 5,
+    "exec-on-event": false,
+    "min-length": 16,
+    "max-length": 16,
+    "tooltip": true,
+    "escape": true,
     "on-click": "kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\""
   },
 
@@ -210,6 +223,7 @@
       "custom/clipboard",
       "battery",
       "custom/swaync",
+      "tray",
       "custom/closebracket"
     ]
   },
@@ -241,6 +255,11 @@
     "format": "",
     "tooltip": false,
     "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/clipboard_menu.sh\""
+  },
+  "tray": {
+    "icon-size": 16,
+    "spacing": 5,
+    "show-passive-items": true
   },
   "battery": {
     "states": {
