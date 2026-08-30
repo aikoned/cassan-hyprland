@@ -1,0 +1,18 @@
+name = "Cassan Nighthowler"
+wallpaper = "reze.jpg"
+
+[colors]
+background = "#0B1715"
+panel = "#151B1D"
+panel_alt = "#211A2C"
+text = "#F2D7DF"
+text_secondary = "#E8E1D6"
+text_muted = "#9D97A6"
+disabled = "#76548F"
+border = "#76548F"
+focus = "#A173C9"
+focus_alt = "#C49AE7"
+blue = "#7898B2"
+purple = "#A173C9"
+green = "#7FA887"
+urgent = "#D56A7B"

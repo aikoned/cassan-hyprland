@@ -1,0 +1,18 @@
+name = "After School Gruvbox"
+wallpaper = "after_school_stroll_gruvbox.png"
+
+[colors]
+background = "#2C2A24"
+panel = "#282828"
+panel_alt = "#3A372F"
+text = "#DDD5C4"
+text_secondary = "#D5C4A1"
+text_muted = "#BDAE93"
+disabled = "#665C54"
+border = "#A0907A"
+focus = "#D08B57"
+focus_alt = "#BFAA80"
+blue = "#7699A3"
+purple = "#8D7AAE"
+green = "#78997A"
+urgent = "#B05A5A"

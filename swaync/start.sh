@@ -11,14 +11,20 @@ case "${1:-}" in
     ;;
 esac
 
+script_dir=$(CDPATH= cd -P -- "$(dirname -- "$0")" && pwd)
+repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hyprland-dots/swaync"
 source_config="$config_home/swaync/config.json"
-source_style="$config_home/swaync/style.css"
+theme_style="${XDG_CACHE_HOME:-$HOME/.cache}/hyprland-dots/active-theme/swaync.css"
 runtime_config="$cache_dir/config.json"
 backlight_root="${HYPRLAND_DOTS_BACKLIGHT_ROOT:-/sys/class/backlight}"
 
 mkdir -p "$cache_dir"
+
+if [[ ! -f "$theme_style" ]]; then
+  "$repo_dir/waybar/scripts/theme-switcher.sh" prepare >/dev/null
+fi
 
 best_device=""
 best_max=-1
@@ -58,4 +64,4 @@ if [[ "${1:-}" == --prepare-only ]]; then
   exit 0
 fi
 
-exec swaync --replace --config "$runtime_config" --style "$source_style"
+exec swaync --replace --config "$runtime_config" --style "$theme_style"

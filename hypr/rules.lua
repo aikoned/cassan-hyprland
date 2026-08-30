@@ -12,3 +12,11 @@ hl.window_rule({
   float = true,
   center = true,
 })
+
+hl.window_rule({
+  name = "float-cassan-task-manager",
+  match = { class = "cassan-btop" },
+  float = true,
+  center = true,
+  size = { "(monitor_w*0.82)", "(monitor_h*0.80)" },
+})

@@ -1,5 +1,5 @@
 /* ========================================================================
-   SwayNC CSS Configuration - Gruvbox-inspired Theme
+   SwayNC CSS Configuration
 ======================================================================== */
 
 :root {
@@ -8,7 +8,7 @@
 }
 
 /* ========================================================================
-   COLOR PALETTE - Gruvbox Inspired
+   COLOR PALETTE
 ======================================================================== */
 @define-color bg-primary #2C2A24;
 /* Dark background - main canvas */
@@ -301,7 +301,7 @@ tooltip {
 
 .widget-volume>box>button {
   border: none;
-  background-color: #3A372F;
+  background-color: @bg-tertiary;
 }
 
 .widget-volume>box>button:hover {

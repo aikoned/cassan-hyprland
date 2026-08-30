@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Yazi File Manager
+Comment=Terminal file manager
+Icon=yazi
+TryExec=kitty
+Exec=kitty --class cassan-yazi -e yazi %f
+Terminal=false
+Type=Application
+Categories=System;FileManager;FileTools;ConsoleOnly;
+Keywords=File;Manager;Explorer;Browser;

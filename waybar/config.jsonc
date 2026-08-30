@@ -48,7 +48,7 @@
   "custom/arch": {
     "format": "󰣇",
     "tooltip": false,
-    "on-click": "wofi --show drun"
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/wofi/launch.sh\" --show drun --allow-images"
   },
   "idle_inhibitor": {
     "format": "{icon}",
@@ -67,7 +67,7 @@
   "custom/themeswitcher": {
     "format": "",
     "tooltip": true,
-    "tooltip-format": "Left-click: next wallpaper\nRight-click: random wallpaper",
+    "tooltip-format": "Left-click: next wallpaper + theme\nRight-click: random wallpaper + theme",
     "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" next",
     "on-click-right": "\"${XDG_CONFIG_HOME:-$HOME/.config}/waybar/scripts/theme-switcher.sh\" random"
   },
@@ -147,13 +147,13 @@
     "format": "CPU:{usage}%",
     "tooltip": false,
     "interval": 2,
-    "on-click": "kitty -e btop"
+    "on-click": "kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\""
   },
   "memory": {
     "format": "RAM:{percentage}%",
     "tooltip": false,
     "interval": 2,
-    "on-click": "kitty -e btop"
+    "on-click": "kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\""
   },
 
   "group/brightvol": {
@@ -258,7 +258,7 @@
       "",
       ""
     ],
-    "on-click": "wlogout"
+    "on-click": "\"${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/launch.sh\""
   },
   "custom/swaync": {
     "return-type": "json",
@@ -277,7 +277,7 @@
     },
     "tooltip": false,
     "escape": true,
-    "on-click": "swaync-client --toggle-panel",
+    "on-click": "swaync-client --toggle-panel --skip-wait",
     "on-click-right": "swaync-client --toggle-dnd"
   }
 }

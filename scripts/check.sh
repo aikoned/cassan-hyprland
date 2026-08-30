@@ -16,10 +16,12 @@ zsh -n "$repo_dir/.zshrc"
 
 required_files=(
   .zshrc
-  assets/Castle.jpg
+  applications/yazi.desktop
+  assets/after_school_stroll_gruvbox.png
   assets-profile/bored.jpg
   assets-profile/readin.jpg
   btop/btop.conf
+  btop/launch.sh
   btop/themes/noctalia.theme
   cava/config
   cava/themes/noctalia
@@ -48,10 +50,13 @@ required_files=(
   scripts/check.sh
   scripts/install.sh
   scripts/migrate-cassan.py
+  scripts/prepare-private-wallpapers.sh
+  scripts/render-theme.py
   scripts/setup-spicetify.sh
   scripts/update.sh
   spotify-launcher.conf
   tests/test_migrate_cassan.py
+  tests/test_prepare_private_wallpapers.py
   spicetify/CustomApps/marketplace/manifest.json
   spicetify/CustomApps/marketplace/release.json
   spicetify/Themes/Comfy/color.ini
@@ -64,11 +69,14 @@ required_files=(
   swaync/config.json
   swaync/start.sh
   swaync/style.css
+  themes/after-school.toml
+  themes/reze.toml
   vesktop/settings.json
   vesktop/settings/settings.json
   vesktop/themes/midnight-discord.css
   vesktop/themes/release.json
   waybar/config.jsonc
+  waybar/start.sh
   waybar/style.css
   waybar/scripts/bluetooth_status.sh
   waybar/scripts/clipboard_menu.sh
@@ -81,9 +89,11 @@ required_files=(
   wlogout/icons/shutdown.png
   wlogout/icons/suspend.png
   wlogout/layout
+  wlogout/launch.sh
   wlogout/style.css
   wofi/config
   wofi/gruvbox.css
+  wofi/launch.sh
   wofi/style.css
   qt6ct/qt6ct.conf
   xdg-desktop-portal/hyprland-portals.conf
@@ -95,6 +105,7 @@ required_files=(
 )
 
 required_dirs=(
+  applications
   assets
   assets-profile
   btop
@@ -108,6 +119,7 @@ required_dirs=(
   spicetify
   swappy
   swaync
+  themes
   vesktop
   waybar
   wlogout
@@ -137,7 +149,14 @@ while IFS= read -r script; do
     printf 'script is not executable: %s\n' "${script#"$repo_dir/"}" >&2
     exit 1
   }
-done < <(find "$repo_dir/scripts" "$repo_dir/waybar/scripts" "$repo_dir/swaync" -type f -name '*.sh' -print)
+done < <(find \
+  "$repo_dir/scripts" \
+  "$repo_dir/btop" \
+  "$repo_dir/waybar" \
+  "$repo_dir/swaync" \
+  "$repo_dir/wofi" \
+  "$repo_dir/wlogout" \
+  -type f -name '*.sh' -print)
 
 python3 - "$repo_dir" <<'PY'
 import ast
@@ -146,7 +165,9 @@ import hashlib
 import configparser
 import pathlib
 import re
+import subprocess
 import sys
+import tempfile
 
 try:
     import tomllib
@@ -155,6 +176,7 @@ except ModuleNotFoundError:
 
 root = pathlib.Path(sys.argv[1])
 ast.parse((root / "scripts/migrate-cassan.py").read_text(encoding="utf-8"))
+ast.parse((root / "scripts/render-theme.py").read_text(encoding="utf-8"))
 for relative in (
     "waybar/config.jsonc",
     "swaync/config.json",
@@ -210,9 +232,14 @@ kitty_includes = [
     for line in (root / "kitty/kitty.conf").read_text(encoding="utf-8").splitlines()
     if line.strip().startswith("include ")
 ]
-if kitty_includes[:2] != ["colors.conf", "current-theme.conf"]:
-    raise ValueError("Kitty must load the reference rice's active theme after its base colors")
-for include in kitty_includes:
+expected_kitty_includes = [
+    "colors.conf",
+    "current-theme.conf",
+    "${XDG_CACHE_HOME}/hyprland-dots/active-theme/kitty.conf",
+]
+if kitty_includes[:3] != expected_kitty_includes:
+    raise ValueError("Kitty must load the generated palette after its fallback colors")
+for include in kitty_includes[:2]:
     if not (root / "kitty" / include).is_file():
         raise FileNotFoundError(f"Kitty include is missing: {include}")
 
@@ -247,6 +274,8 @@ for relative in (
     "yazi/theme.toml",
     "yazi/flavors/noctalia.yazi/flavor.toml",
     "spotify-launcher.conf",
+    "themes/after-school.toml",
+    "themes/reze.toml",
 ):
     with (root / relative).open("rb") as handle:
         tomllib.load(handle)
@@ -259,6 +288,140 @@ expected_spotify_arguments = [
 ]
 if spotify_launcher.get("spotify", {}).get("extra_arguments") != expected_spotify_arguments:
     raise ValueError("Spotify launcher must request native Wayland rendering")
+
+desktop = configparser.ConfigParser(interpolation=None)
+desktop.optionxform = str
+desktop.read(root / "applications/yazi.desktop", encoding="utf-8")
+yazi_entry = desktop["Desktop Entry"]
+expected_yazi = {
+    "TryExec": "kitty",
+    "Exec": "kitty --class cassan-yazi -e yazi %f",
+    "Terminal": "false",
+    "Type": "Application",
+}
+for key, value in expected_yazi.items():
+    if yazi_entry.get(key) != value:
+        raise ValueError(f"Yazi desktop entry has an invalid {key}")
+
+theme_files = {
+    "after-school": root / "themes/after-school.toml",
+    "reze": root / "themes/reze.toml",
+}
+expected_wallpapers = {
+    "after-school": "after_school_stroll_gruvbox.png",
+    "reze": "reze.jpg",
+}
+required_colors = {
+    "background", "panel", "panel_alt", "text", "text_secondary",
+    "text_muted", "disabled", "border", "focus", "focus_alt", "blue",
+    "purple", "green", "urgent",
+}
+
+def relative_luminance(value):
+    channels = [int(value[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    channels = [
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+def contrast_ratio(first, second):
+    lighter, darker = sorted(
+        (relative_luminance(first), relative_luminance(second)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+palettes = {}
+for slug, path in theme_files.items():
+    with path.open("rb") as handle:
+        palette = tomllib.load(handle)
+    if palette.get("wallpaper") != expected_wallpapers[slug]:
+        raise ValueError(f"{slug} theme has the wrong wallpaper mapping")
+    colors = palette.get("colors", {})
+    if missing := required_colors - colors.keys():
+        raise ValueError(f"{slug} theme is missing colors: {sorted(missing)}")
+    for name in required_colors:
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", colors[name]):
+            raise ValueError(f"{slug}.{name} is not a six-digit hex color")
+    if contrast_ratio(colors["text"], colors["background"]) < 4.5:
+        raise ValueError(f"{slug} text contrast is below 4.5:1")
+    if contrast_ratio(colors["focus"], colors["background"]) < 3:
+        raise ValueError(f"{slug} focus contrast is below 3:1")
+    palettes[slug] = palette
+
+image_suffixes = {".jpg", ".jpeg", ".png"}
+public_wallpapers = {
+    path.name
+    for path in (root / "assets").iterdir()
+    if path.is_file() and path.suffix.lower() in image_suffixes
+}
+if public_wallpapers != {"after_school_stroll_gruvbox.png"}:
+    raise ValueError(f"unexpected public wallpaper set: {sorted(public_wallpapers)}")
+
+with tempfile.TemporaryDirectory() as temporary:
+    output_root = pathlib.Path(temporary)
+    for slug, palette in palettes.items():
+        output = output_root / slug
+        subprocess.run(
+            [
+                sys.executable,
+                str(root / "scripts/render-theme.py"),
+                "--theme", slug,
+                "--output", str(output),
+            ],
+            check=True,
+        )
+        for filename in (
+            "btop/noctalia.theme", "current-theme", "hypr.lua", "hyprlock.conf",
+            "kitty.conf", "swaync.css", "waybar.css", "wofi.css", "wlogout.css",
+        ):
+            if not (output / filename).is_file():
+                raise FileNotFoundError(f"theme renderer omitted {slug}/{filename}")
+        if (output / "current-theme").read_text(encoding="utf-8").strip() != slug:
+            raise ValueError(f"theme renderer wrote the wrong state for {slug}")
+        focus = palette["colors"]["focus"]
+        if focus not in (output / "waybar.css").read_text(encoding="utf-8"):
+            raise ValueError(f"Waybar output does not contain the {slug} focus color")
+        if "@import" in (output / "wofi.css").read_text(encoding="utf-8"):
+            raise ValueError("rendered Wofi CSS must be self-contained")
+        if focus not in (output / "btop/noctalia.theme").read_text(encoding="utf-8"):
+            raise ValueError(f"Btop output does not contain the {slug} focus color")
+        if focus not in (output / "kitty.conf").read_text(encoding="utf-8"):
+            raise ValueError(f"Kitty output does not contain the {slug} focus color")
+        for icon in (root / "wlogout/icons").glob("*.png"):
+            rendered_icon = output / "icons" / icon.name
+            if not rendered_icon.is_file():
+                raise FileNotFoundError(
+                    f"theme renderer omitted {slug}/icons/{icon.name}"
+                )
+            if hashlib.sha256(rendered_icon.read_bytes()).digest() != hashlib.sha256(
+                icon.read_bytes()
+            ).digest():
+                raise ValueError(f"rendered Wlogout icon changed: {icon.name}")
+
+switcher = (root / "waybar/scripts/theme-switcher.sh").read_text(encoding="utf-8")
+apply_body = switcher.split("apply_index() {", 1)[1].split("\n}", 1)[0]
+if apply_body.index("awww img") > apply_body.index('activate_index "$index"'):
+    raise ValueError("theme state must only publish after awww accepts the wallpaper")
+if "flock 9" not in switcher:
+    raise ValueError("theme switching must serialize concurrent changes")
+if 'atomic_symlink "${wallpapers[$index]}"' in switcher:
+    raise ValueError("wallpaper and palette state must share one active-theme pointer")
+
+installer = (root / "scripts/install.sh").read_text(encoding="utf-8")
+private_preflight = installer.index(
+    '"$repo_dir/scripts/prepare-private-wallpapers.sh" >/dev/null'
+)
+migration = installer.index(
+    'python3 "$repo_dir/scripts/migrate-cassan.py" --apply'
+)
+first_link = installer.index('for name in "${config_names[@]}"; do')
+if not private_preflight < migration < first_link:
+    raise ValueError(
+        "private wallpaper verification must precede migration and config links"
+    )
 
 waybar = json.loads((root / "waybar/config.jsonc").read_text(encoding="utf-8"))
 if waybar.get("fixed-center") is not False:
@@ -365,13 +528,14 @@ official = manifest_entries("packages/official.txt")
 aur = manifest_entries("packages/aur.txt")
 required_official = {
     "adwaita-icon-theme", "awww", "bluez", "blueman", "brightnessctl",
-    "cliphist", "ffmpegthumbnailer", "gnome-themes-extra", "gvfs", "gvfs-mtp",
+    "cliphist", "desktop-file-utils", "ffmpegthumbnailer", "firefox",
+    "gsettings-desktop-schemas", "gnome-themes-extra", "gvfs", "gvfs-mtp",
     "hypridle", "hyprland",
     "hyprlock", "hyprpolkitagent", "hyprshutdown", "kitty", "networkmanager",
     "libgepub", "libgsf", "libopenraw", "otf-font-awesome", "pipewire-pulse",
     "poppler-glib", "power-profiles-daemon", "qt6-wayland", "qt6ct",
     "spotify-launcher", "swaync", "thunar", "thunar-archive-plugin",
-    "thunar-volman", "tumbler", "waybar", "wl-clipboard", "wofi",
+    "thunar-volman", "tumbler", "util-linux", "waybar", "wl-clipboard", "wofi",
     "xdg-desktop-portal-gtk", "xdg-desktop-portal-hyprland", "xarchiver",
 }
 required_aur = {"spicetify-cli", "vesktop", "wlogout"}
@@ -382,6 +546,7 @@ if missing := required_aur - aur:
 PY
 
 python3 "$repo_dir/tests/test_migrate_cassan.py"
+python3 "$repo_dir/tests/test_prepare_private_wallpapers.py"
 
 if rg -n '/home/[^/$ ]+' \
   "$repo_dir/hypr" \
@@ -414,6 +579,68 @@ rg -Fq 'hl.bind(mod .. " + P", hl.dsp.window.pseudo())' "$repo_dir/hypr/bind.lua
   printf 'the Super+P pseudotile dispatcher binding is missing\n' >&2
   exit 1
 }
+
+for binding in \
+  'hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("kitty"))' \
+  'hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd(launcher))' \
+  'hl.bind(mod .. " + E", hl.dsp.exec_cmd("kitty --class cassan-yazi -e yazi"))' \
+  'hl.bind(mod .. " + CTRL + ESCAPE", hl.dsp.exec_cmd(task_manager))' \
+  'hl.bind(mod .. " + Q", hl.dsp.window.close())' \
+  'hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | swappy -f -]]))' \
+  'hl.bind(mod .. " + CTRL + S", hl.dsp.window.move({ workspace = "special:scratch" }))'; do
+  rg -Fq "$binding" "$repo_dir/hypr/bind.lua" || {
+    printf 'restored Cassan binding is missing: %s\n' "$binding" >&2
+    exit 1
+  }
+done
+
+rg -Fq '"$repo_dir/waybar/scripts/theme-switcher.sh" prepare' "$repo_dir/scripts/install.sh" || {
+  printf 'installer must prepare the selected wallpaper and theme\n' >&2
+  exit 1
+}
+
+rg -Fq 'applications/yazi.desktop' "$repo_dir/scripts/install.sh" || {
+  printf 'installer must link the Yazi desktop entry\n' >&2
+  exit 1
+}
+
+for active_consumer in \
+  'hypr/theme.lua:/hyprland-dots/active-theme/hypr.lua' \
+  'hypr/hyprlock.conf:hyprland-dots/active-theme/wallpaper' \
+  'kitty/kitty.conf:hyprland-dots/active-theme/kitty.conf' \
+  'btop/launch.sh:hyprland-dots/active-theme/btop' \
+  'waybar/start.sh:hyprland-dots/active-theme' \
+  'swaync/start.sh:hyprland-dots/active-theme/swaync.css' \
+  'wofi/launch.sh:hyprland-dots/active-theme/wofi.css' \
+  'wlogout/launch.sh:hyprland-dots/active-theme/wlogout.css'; do
+  consumer=${active_consumer%%:*}
+  expected=${active_consumer#*:}
+  rg -Fq "$expected" "$repo_dir/$consumer" || {
+    printf 'dynamic theme consumer is not using the active palette: %s\n' "$consumer" >&2
+    exit 1
+  }
+done
+
+if [[ $(rg -F -c 'kitty --class cassan-btop -e \"${XDG_CONFIG_HOME:-$HOME/.config}/btop/launch.sh\"' \
+  "$repo_dir/waybar/config.jsonc") -ne 2 ]]; then
+  printf 'Waybar CPU and RAM clicks must both use the themed Btop launcher\n' >&2
+  exit 1
+fi
+
+rg -Fq 'awww-daemon 9>&- >/dev/null 2>&1 &' \
+  "$repo_dir/waybar/scripts/theme-switcher.sh" || {
+  printf 'awww-daemon must not inherit the theme-switcher flock descriptor\n' >&2
+  exit 1
+}
+
+for mapping in \
+  'wallpapers=("$after_school" "$reze")' \
+  'themes=("after-school" "reze")'; do
+  rg -Fq "$mapping" "$repo_dir/waybar/scripts/theme-switcher.sh" || {
+    printf 'two-wallpaper theme mapping is missing: %s\n' "$mapping" >&2
+    exit 1
+  }
+done
 
 if rg -n '\.spicetify' "$repo_dir/.zshrc"; then
   printf 'the shell PATH must not prefer the retired Cassan Spicetify binary\n' >&2

@@ -42,6 +42,7 @@ done
 script_dir=$(CDPATH= cd -P -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+data_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hyprland-dots"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hyprland-dots"
 backup_id=$(date -u +'%Y%m%dT%H%M%SZ')
@@ -83,7 +84,9 @@ link_sources=(
   "${config_names[@]}"
   assets
   assets-profile
+  applications/yazi.desktop
   spotify-launcher.conf
+  themes
   spicetify/Themes/Comfy
   spicetify/Themes/marketplace
   spicetify/Themes/text
@@ -168,11 +171,29 @@ fi
 # ripgrep may only have become available in the package transaction above.
 "$repo_dir/scripts/check.sh"
 
+"$repo_dir/scripts/prepare-private-wallpapers.sh" >/dev/null
+
+set_dark_preferences() {
+  local failed=false
+
+  if ! command -v gsettings >/dev/null 2>&1; then
+    printf 'warning: gsettings is unavailable; Firefox may retain a light toolbar\n' >&2
+    return
+  fi
+  gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' || failed=true
+  gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark' || failed=true
+  if [[ "$failed" == true ]]; then
+    printf 'warning: the desktop dark preference could not be saved in this session\n' >&2
+  fi
+}
+
+set_dark_preferences
+
 if [[ "$migrate_cassan" == true ]]; then
   python3 "$repo_dir/scripts/migrate-cassan.py" --apply
 fi
 
-mkdir -p "$config_dir" "$state_dir" "$cache_dir"
+mkdir -p "$config_dir" "$data_dir/applications" "$state_dir" "$cache_dir"
 mkdir -p "$HOME/Pictures/Screenshots"
 
 ensure_backup_dir() {
@@ -239,6 +260,16 @@ link_path \
   "config/spotify-launcher.conf"
 
 link_path \
+  "$repo_dir/applications/yazi.desktop" \
+  "$data_dir/applications/yazi.desktop" \
+  "data/applications/yazi.desktop"
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database "$data_dir/applications" || \
+    printf 'warning: the desktop application cache could not be refreshed\n' >&2
+fi
+
+link_path \
   "$repo_dir/spicetify/Themes/Comfy" \
   "$config_dir/spicetify/Themes/Comfy" \
   "config/spicetify/Themes/Comfy"
@@ -262,9 +293,7 @@ if [[ "$link_shell" == true ]]; then
   link_path "$repo_dir/.zshrc" "$HOME/.zshrc" "home/.zshrc"
 fi
 
-if [[ ! -e "$cache_dir/current-wallpaper" && ! -L "$cache_dir/current-wallpaper" ]]; then
-  ln -s -- "$repo_dir/assets/Castle.jpg" "$cache_dir/current-wallpaper"
-fi
+"$repo_dir/waybar/scripts/theme-switcher.sh" prepare
 
 "$repo_dir/scripts/check.sh"
 

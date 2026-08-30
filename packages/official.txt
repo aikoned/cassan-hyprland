@@ -14,6 +14,7 @@ hypridle
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 hyprpolkitagent
+gsettings-desktop-schemas
 
 # Desktop utilities and services
 thunar
@@ -41,6 +42,7 @@ qt6ct
 qt6-wayland
 adwaita-icon-theme
 gnome-themes-extra
+desktop-file-utils
 
 # Wayland tools
 wl-clipboard
@@ -55,6 +57,7 @@ libnotify
 pavucontrol
 
 # Rice applications
+firefox
 btop
 cava
 fastfetch
@@ -93,3 +96,4 @@ less
 python
 ripgrep
 unzip
+util-linux
