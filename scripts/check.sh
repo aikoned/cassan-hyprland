@@ -61,6 +61,7 @@ required_files=(
   tests/test_migrate_cassan.py
   tests/test_memory_pressure.py
   tests/test_prepare_private_wallpapers.py
+  tests/test_runtime_data_validation.py
   tests/test_setup_firefox_theme.py
   tests/test_setup_spicetify.py
   tests/test_spotify_theme.js
@@ -588,6 +589,7 @@ PY
 python3 "$repo_dir/tests/test_migrate_cassan.py"
 python3 "$repo_dir/tests/test_memory_pressure.py"
 python3 "$repo_dir/tests/test_prepare_private_wallpapers.py"
+python3 "$repo_dir/tests/test_runtime_data_validation.py"
 python3 "$repo_dir/tests/test_setup_firefox_theme.py"
 python3 "$repo_dir/tests/test_setup_spicetify.py"
 python3 "$repo_dir/tests/test_spotify_text_theme.py"
@@ -602,7 +604,7 @@ else
   printf 'Node is unavailable; Spotify extension unit tests skipped on this host.\n'
 fi
 
-if rg -n '/home/[^/$ ]+' \
+if rg --no-require-git -n '/home/[^/$ ]+' \
   "$repo_dir/hypr" \
   "$repo_dir/waybar" \
   "$repo_dir/swaync" \
@@ -618,7 +620,7 @@ if rg -n '/home/[^/$ ]+' \
   exit 1
 fi
 
-if rg -n '\bswww(-daemon)?\b' "$repo_dir" \
+if rg --no-require-git -n '\bswww(-daemon)?\b' "$repo_dir" \
   -g '!README.md' -g '!UPDATING.md' -g '!scripts/check.sh'; then
   printf 'obsolete swww command found; current Arch uses awww\n' >&2
   exit 1

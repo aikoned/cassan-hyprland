@@ -41,6 +41,7 @@ __pycache__/
 .mozilla/
 .config/discord/
 .config/vesktop/sessionData/
+/vesktop/sessionData/
 .config/spotify/
 /spicetify/config-xpui.ini
 .ssh/
